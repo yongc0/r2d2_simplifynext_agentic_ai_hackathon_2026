@@ -1,0 +1,75 @@
+[project]
+name = "spark"
+version = "0.1.0"
+description = "Spark - one anonymous three-minute voice call a day, with someone whose path crossed yours"
+requires-python = ">=3.11"
+
+# Base install runs EVERYTHING in the MVP: the graph, the six MCP servers, the
+# simulation, the tests and the three-arm evaluation. No AWS account needed —
+# the local development path is Groq's free tier, and the deterministic
+# simulator path needs no key at all. See README.md "Running without a key".
+dependencies = [
+    # --- orchestration -------------------------------------------------
+    # LangGraph is the supervisor. We depend on it for exactly two things
+    # the MVP could not fake: durable checkpointed threads that span weeks,
+    # and interrupt(), which IS the consent gate (docs/ARCHITECTURE.md §11.4).
+    "langgraph>=0.6",
+    "langgraph-checkpoint-sqlite>=2.0",   # durable checkpoints -> survives a restart
+    "langchain-core>=0.3",
+    # --- models --------------------------------------------------------
+    "langchain-groq>=1.1",                # local development / iteration tier
+    # --- schemas -------------------------------------------------------
+    # Every agent output is a pydantic model. Schema validation pass rate is a
+    # graded metric; it is only measurable because these exist.
+    "pydantic>=2.11",
+    # --- tools ---------------------------------------------------------
+    # Every external capability is an MCP server (§11.3). These are real
+    # servers: `uv run -m src.mcp.overlap` speaks MCP over stdio.
+    "mcp>=1.2",
+    # --- observability -------------------------------------------------
+    # One trace per encounter and per continuity action. The trace is the
+    # debugging tool, the explainability source, and the demo.
+    "opentelemetry-api>=1.27",
+    "opentelemetry-sdk>=1.27",
+    # --- http ----------------------------------------------------------
+    # The API the demo client talks to. It drives the SAME supervisor graph the
+    # CLI and the evaluation drive — the consent gate over HTTP is the same
+    # LangGraph interrupt(), not a reimplementation of it.
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    # --- diagrams ------------------------------------------------------
+    # Lets the compiled graph draw itself as ASCII. `uv run -m src.cli.encounter
+    # --graph` prints the supervisor, which is how a judge checks that the
+    # architecture slide and the running code are the same picture.
+    "grandalf>=0.8",
+]
+
+[project.optional-dependencies]
+# The graded evaluation run goes on Bedrock so reported token costs are real.
+aws = [
+    "boto3>=1.42",
+    "langchain-aws>=1.4.3",
+]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.setuptools]
+packages = ["src"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# This repository lives in a OneDrive-synced folder on at least one machine.
+# uv's default hardlink install fails there with os error 396. Copy mode costs
+# a few seconds on first sync and works on every filesystem, so it is the
+# default here rather than something each person has to discover.
+[tool.uv]
+link-mode = "copy"

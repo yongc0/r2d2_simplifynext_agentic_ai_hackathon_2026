@@ -1,0 +1,5 @@
+# Spark is an unlaunched hackathon demo, not a live service. Kept out of search
+# results until it is something a stranger arriving from Google should find.
+# Delete this file to allow indexing.
+User-agent: *
+Disallow: /

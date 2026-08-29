@@ -1,0 +1,85 @@
+{
+  "note": "Coarse overlap cells. These names exist so the guardrail can FORBID them: no place name, distance or coordinate is ever rendered to a user (INVARIANT 3). Agents see opaque cell tokens only, and users see neither.",
+  "cells": [
+    {
+      "cell_id": "cell-00",
+      "operator_label": "Raffles Place"
+    },
+    {
+      "cell_id": "cell-01",
+      "operator_label": "Tanjong Pagar"
+    },
+    {
+      "cell_id": "cell-02",
+      "operator_label": "Bugis"
+    },
+    {
+      "cell_id": "cell-03",
+      "operator_label": "Jurong East"
+    },
+    {
+      "cell_id": "cell-04",
+      "operator_label": "Tampines"
+    },
+    {
+      "cell_id": "cell-05",
+      "operator_label": "Woodlands"
+    },
+    {
+      "cell_id": "cell-06",
+      "operator_label": "Serangoon"
+    },
+    {
+      "cell_id": "cell-07",
+      "operator_label": "Clementi"
+    },
+    {
+      "cell_id": "cell-08",
+      "operator_label": "Novena"
+    },
+    {
+      "cell_id": "cell-09",
+      "operator_label": "Paya Lebar"
+    },
+    {
+      "cell_id": "cell-10",
+      "operator_label": "Queenstown"
+    },
+    {
+      "cell_id": "cell-11",
+      "operator_label": "Bishan"
+    },
+    {
+      "cell_id": "cell-12",
+      "operator_label": "Yishun"
+    },
+    {
+      "cell_id": "cell-13",
+      "operator_label": "Punggol"
+    },
+    {
+      "cell_id": "cell-14",
+      "operator_label": "Dhoby Ghaut"
+    },
+    {
+      "cell_id": "cell-15",
+      "operator_label": "Outram Park"
+    },
+    {
+      "cell_id": "cell-16",
+      "operator_label": "Kallang"
+    },
+    {
+      "cell_id": "cell-17",
+      "operator_label": "Redhill"
+    },
+    {
+      "cell_id": "cell-18",
+      "operator_label": "Toa Payoh"
+    },
+    {
+      "cell_id": "cell-19",
+      "operator_label": "Buona Vista"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+# SPA fallback, shipped INSIDE dist/ as well as in netlify.toml.
+#
+# netlify.toml only applies when Netlify runs the build itself. A drag-and-drop
+# or `netlify deploy --dir=web/dist` upload never reads it, and then every route
+# but "/" would 404 on refresh. This file travels with the bundle, so the
+# fallback cannot be lost depending on how the site was deployed.
+/*  /index.html  200

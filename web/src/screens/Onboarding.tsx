@@ -1,0 +1,400 @@
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+
+import { getAdapter } from "../api/adapter";
+import type { ChipKind, Intent, ProfileChip } from "../api/types";
+import { SingpassVerification } from "../components/SingpassVerification";
+import { intentLabel } from "../api/wire";
+import { useSpark } from "../store/useSpark";
+
+/**
+ * /onboarding — simulated verification, then conversational intake (§5.1).
+ *
+ * Chat, not a form. The agent asks one thing at a time, the person answers in
+ * their own words, and what was understood appears as chips in the panel above
+ * — animated in as they are captured. FRONTEND.md calls that "the shot that
+ * sells the Onboarding Agent in three seconds", and it is the reason this
+ * screen is a conversation rather than four dropdowns.
+ *
+ * TWO THINGS HERE ARE SAFETY, NOT DESIGN
+ *
+ * 1. INTENT IS NEVER INFERRED. The final step offers the three options as
+ *    buttons, and pressing one appends a sentence that NAMES the intent to the
+ *    transcript. The extraction then finds it the ordinary way. There is no
+ *    path in this file that sets an intent directly — the button is the person
+ *    saying it, not the screen deciding for them. (ARCHITECTURE §13.1, and
+ *    `spark/tests/test_intent.py` holds the same line on the Python side.)
+ *
+ * 2. NO HEIGHT, APPEARANCE OR PHOTO FIELD — invariant 9.5. There is no such
+ *    input, and `ChipKind` has no member one could be rendered as, so this is
+ *    structural rather than a matter of remembering. `extract.ts` additionally
+ *    strips those words before matching, so volunteering one captures nothing.
+ */
+
+/**
+ * How long the agent "thinks" before replying.
+ *
+ * Long enough to read as a conversation rather than a form submit, short enough
+ * that a five-minute recording is not mostly waiting. One constant so every
+ * turn is paced identically — a variable delay would read as the agent finding
+ * some answers harder than others.
+ */
+const AGENT_DELAY_MS = 600;
+
+/** The opening question. Deliberately open — it is not asking for a checklist. */
+const OPENING =
+  "Hello. Tell me a little about how you spend your time, and what matters to you.";
+
+const COMPLETE =
+  "That is everything I need. Your first encounter window opens at 9pm.";
+
+interface Message {
+  from: "agent" | "user";
+  text: string;
+}
+
+export default function Onboarding() {
+  const navigate = useNavigate();
+  const reduced = useReducedMotion();
+  const setChips = useSpark((s) => s.setChips);
+  const chips = useSpark((s) => s.chips);
+
+  /**
+   * The verification mockup comes first, but it is deliberately not sent to
+   * the adapter: there is no Singpass integration and no real identity data.
+   * It is a filmable product concept whose disclosure says exactly that.
+   */
+  const [verificationComplete, setVerificationComplete] = useState(false);
+
+  const [messages, setMessages] = useState<Message[]>([
+    { from: "agent", text: OPENING },
+  ]);
+  const [draft, setDraft] = useState("");
+  const [thinking, setThinking] = useState(false);
+  /** True once the agent has nothing left to ask. */
+  const [complete, setComplete] = useState(false);
+  /** True when the agent is waiting on an intent it may not infer. */
+  const [askingIntent, setAskingIntent] = useState(false);
+  /** Availability is a fixed vocabulary, so show every valid choice instead
+   *  of making the person guess which phrases the extractor recognises. */
+  const [askingAvailability, setAskingAvailability] = useState(false);
+
+  /** Everything the person has actually said, in order. The extraction runs
+   *  over the whole of it, never over the latest message alone. */
+  const transcript = useRef<string[]>([]);
+  const scroller = useRef<HTMLDivElement>(null);
+
+  // Keep the newest message in view. Assigned rather than animated: a scroll
+  // animation racing a chip animation is the kind of jitter that shows up on
+  // film and nowhere else.
+  useEffect(() => {
+    const el = scroller.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, thinking]);
+
+  const send = async (text: string) => {
+    const said = text.trim();
+    if (!said || thinking || complete) return;
+
+    setDraft("");
+    setAskingIntent(false);
+    setAskingAvailability(false);
+    setMessages((m) => [...m, { from: "user", text: said }]);
+    transcript.current.push(said);
+    setThinking(true);
+
+    const turn = await getAdapter().extractProfile(transcript.current.join(" "));
+
+    // The pause is after the work, not instead of it: the agent has genuinely
+    // finished before the reply appears.
+    await new Promise((resolve) => setTimeout(resolve, AGENT_DELAY_MS));
+
+    setChips(turn.chips);
+    setThinking(false);
+
+    if (turn.followUp) {
+      setMessages((m) => [...m, { from: "agent", text: turn.followUp! }]);
+      setAskingIntent(turn.unresolved.includes("intent"));
+      setAskingAvailability(turn.unresolved.includes("availability"));
+    } else {
+      setMessages((m) => [...m, { from: "agent", text: COMPLETE }]);
+      setComplete(true);
+    }
+  };
+
+  if (!verificationComplete) {
+    return (
+      <SingpassVerification
+        onComplete={() => setVerificationComplete(true)}
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      <ChipPanel chips={chips} reduced={!!reduced} />
+
+      <div
+        ref={scroller}
+        className="no-scrollbar flex-1 space-y-3 overflow-y-auto px-6 py-5"
+      >
+        {messages.map((message, i) => (
+          <Bubble key={i} message={message} reduced={!!reduced} />
+        ))}
+        {thinking ? <Thinking /> : null}
+      </div>
+
+      <div className="border-t border-white/[0.06] px-5 pt-4 pb-8">
+        {complete ? (
+          <button
+            type="button"
+            onClick={() => navigate("/home", { replace: true })}
+            className="w-full rounded-pill bg-accent px-6 py-4 text-base font-medium text-text transition-opacity hover:opacity-90"
+          >
+            Continue
+          </button>
+        ) : (
+          // The choices sit ABOVE the composer rather than replacing it. They
+          // are a convenience for naming an intent, not a gate: someone who
+          // would rather say it in their own words still can, and someone who
+          // wants to add something else first is not stuck.
+          <div className="flex flex-col gap-3">
+            {askingIntent ? <IntentChoice onChoose={send} /> : null}
+            {askingAvailability ? (
+              <AvailabilityChoice onChoose={send} />
+            ) : null}
+            <Composer
+              value={draft}
+              onChange={setDraft}
+              onSend={() => send(draft)}
+              disabled={thinking}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// The chip panel — the live extraction
+// ---------------------------------------------------------------------------
+
+/** Colour per kind, so the panel reads as structure rather than a word cloud. */
+const CHIP_STYLE: Record<ChipKind, string> = {
+  intent: "bg-accent/25 text-accent-soft ring-accent/30",
+  interest: "bg-white/[0.06] text-text/90 ring-white/10",
+  value: "bg-sky-400/10 text-sky-200 ring-sky-400/20",
+  availability: "bg-amber-400/10 text-amber-200 ring-amber-400/20",
+  language: "bg-emerald-400/10 text-emerald-200 ring-emerald-400/20",
+};
+
+function ChipPanel({
+  chips,
+  reduced,
+}: {
+  chips: ProfileChip[];
+  reduced: boolean;
+}) {
+  return (
+    // FIXED height, not min-height. The panel fills from empty to full during
+    // the take, and a container that grew with it would push the conversation
+    // down the screen mid-sentence.
+    <div
+      className="h-[184px] shrink-0 border-b border-white/[0.06] px-6 pt-14 pb-4"
+      aria-live="polite"
+      aria-label="What the agent has understood"
+    >
+      <p className="mb-3 font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
+        Understood so far
+      </p>
+
+      {chips.length === 0 ? (
+        <p className="text-sm leading-relaxed text-muted/60">
+          Nothing yet — this fills in as you talk.
+        </p>
+      ) : (
+        <div className="no-scrollbar flex h-[104px] flex-wrap content-start gap-2 overflow-y-auto">
+          <AnimatePresence initial={false}>
+            {chips.map((chip) => (
+              <motion.span
+                key={`${chip.kind}:${chip.label}`}
+                initial={reduced ? false : { opacity: 0, scale: 0.86, y: 6 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                className={`rounded-pill px-3 py-1.5 text-[13px] ring-1 ring-inset ${CHIP_STYLE[chip.kind]}`}
+              >
+                {chip.label}
+              </motion.span>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// The conversation
+// ---------------------------------------------------------------------------
+
+function Bubble({
+  message,
+  reduced,
+}: {
+  message: Message;
+  reduced: boolean;
+}) {
+  const fromAgent = message.from === "agent";
+  return (
+    <motion.div
+      initial={reduced ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      className={fromAgent ? "flex justify-start" : "flex justify-end"}
+    >
+      <p
+        className={
+          fromAgent
+            ? "max-w-[80%] rounded-card rounded-bl-md bg-surface px-4 py-3 text-[15px] leading-relaxed text-text/90"
+            : "max-w-[80%] rounded-card rounded-br-md bg-accent/85 px-4 py-3 text-[15px] leading-relaxed text-text"
+        }
+      >
+        {message.text}
+      </p>
+    </motion.div>
+  );
+}
+
+function Thinking() {
+  return (
+    <div className="flex justify-start" aria-label="The agent is thinking">
+      <div className="flex gap-1.5 rounded-card rounded-bl-md bg-surface px-4 py-4">
+        {[0, 1, 2].map((i) => (
+          <motion.span
+            key={i}
+            className="h-1.5 w-1.5 rounded-full bg-muted"
+            animate={{ opacity: [0.25, 1, 0.25] }}
+            transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.16 }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Input
+// ---------------------------------------------------------------------------
+
+function Composer({
+  value,
+  onChange,
+  onSend,
+  disabled,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  onSend: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <form
+      className="flex items-center gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSend();
+      }}
+    >
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        aria-label="Your reply"
+        placeholder="Say it however you like"
+        className="min-w-0 flex-1 rounded-pill bg-surface px-5 py-3.5 text-[15px] text-text placeholder:text-muted/50 focus:outline-none disabled:opacity-50"
+      />
+      <button
+        type="submit"
+        disabled={disabled || value.trim().length === 0}
+        className="shrink-0 rounded-pill bg-accent px-5 py-3.5 text-sm font-medium text-text transition-opacity hover:opacity-90 disabled:opacity-30"
+      >
+        Send
+      </button>
+    </form>
+  );
+}
+
+/**
+ * The intent question, as three buttons.
+ *
+ * Each button sends a SENTENCE, not a value. That is the whole point: the
+ * extraction still has to find a named intent in the transcript, so this screen
+ * has no privileged route to setting one. Delete this component and intake
+ * still works — the person can type the same words.
+ *
+ * The order is fixed and nothing is preselected or emphasised. A default here
+ * would be a nudge, and a nudge is inferring intent with extra steps.
+ */
+const INTENT_SENTENCES: [Intent, string][] = [
+  ["partner_long_term", "I am looking for something long term."],
+  ["partner_short_term", "I am looking for something short term."],
+  ["friends", "I am looking to make friends."],
+];
+
+function IntentChoice({ onChoose }: { onChoose: (text: string) => void }) {
+  return (
+    <div className="flex flex-col gap-2">
+      {INTENT_SENTENCES.map(([intent, sentence]) => (
+        <button
+          key={intent}
+          type="button"
+          onClick={() => onChoose(sentence)}
+          className="w-full rounded-pill bg-surface px-6 py-3.5 text-[15px] text-text ring-1 ring-white/[0.06] ring-inset transition-colors hover:bg-white/[0.07]"
+        >
+          {intentLabel(intent)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Availability is one of six backend time buckets, not open-ended prose.
+ * Showing the whole vocabulary avoids the loop where answers such as "9" or
+ * "3 minutes" were valid human responses but matched none of the extractor's
+ * hidden phrases, causing the same question to repeat indefinitely.
+ */
+const AVAILABILITY_SENTENCES = [
+  ["Early morning", "I am usually free in the early morning."],
+  ["Morning", "I am usually free in the morning."],
+  ["Midday", "I am usually free around midday."],
+  ["Afternoon", "I am usually free in the afternoon."],
+  ["Evening", "I am usually free in the evening."],
+  ["Night", "I am usually free at night."],
+] as const;
+
+function AvailabilityChoice({
+  onChoose,
+}: {
+  onChoose: (text: string) => void;
+}) {
+  return (
+    <div
+      className="grid grid-cols-2 gap-2"
+      aria-label="Choose when you are usually free"
+    >
+      {AVAILABILITY_SENTENCES.map(([label, sentence]) => (
+        <button
+          key={label}
+          type="button"
+          onClick={() => onChoose(sentence)}
+          className="rounded-card bg-surface px-4 py-3.5 text-sm text-text ring-1 ring-white/[0.06] ring-inset transition-colors hover:bg-white/[0.07]"
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}

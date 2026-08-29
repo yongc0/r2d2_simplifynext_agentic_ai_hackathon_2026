@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en-SG" class="spark-root">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0F0D0E" />
+    <title>Spark</title>
+    <!--
+      The background is painted here, in the document itself, rather than
+      waiting for the stylesheet or for React to mount. This app gets recorded
+      at 1080p: a single white frame before first paint is a re-record, and it
+      is the one flash you cannot fix in the edit.
+    -->
+    <style>
+      html.spark-root,
+      html.spark-root body {
+        margin: 0;
+        background: #0f0d0e;
+        color: #f5f0f1;
+        /* No bounce, no rubber-banding, no scrollbar in frame. */
+        overscroll-behavior: none;
+      }
+      html.spark-root body {
+        min-height: 100dvh;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

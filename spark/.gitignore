@@ -1,0 +1,21 @@
+# ---- secrets. Never commit these. -------------------------------------
+# src/config.py reads spark/.env on import.
+.env
+*.pem
+credentials
+
+# ---- environments and caches ------------------------------------------
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+
+# ---- generated output -------------------------------------------------
+# Traces, checkpoints, evaluation results and test scratch space. All
+# reproducible: `uv run -m eval.run_arms && uv run -m eval.report`.
+runs/
+
+# ---- build and tool artefacts -----------------------------------------
+*.egg-info/
+.pytest_cache/

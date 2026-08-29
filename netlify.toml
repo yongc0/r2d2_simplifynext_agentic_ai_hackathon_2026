@@ -1,0 +1,38 @@
+# Netlify — the public demo client.
+#
+# ONLY the front end is deployed. The FastAPI backend is deliberately not
+# hosted: it has no auth and a single shared in-memory session, so every
+# visitor would be the same user, sharing one encounter and one side of the
+# consent gate. That is not a scaling problem, it is invariants 2 and 3 failing
+# in public. See docs/PILOT.md §8.4 and DEPLOYMENT_READINESS.md.
+#
+# Nothing here needs a key, and the site works with no backend at all, because
+# MockAdapter is the default (docs/FRONTEND.md §4).
+
+[build]
+  # The repository root holds the workshop lab as well, so point Netlify at the
+  # client. `publish` is relative to `base`, i.e. web/dist.
+  base = "web"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Pinned so a Netlify default upgrade cannot change the build under us before
+  # the submission. 22 is current LTS and inside Vite 5.4's supported range;
+  # the build is verified locally on 24. If Netlify fails on 22, raise it to 24
+  # rather than unpinning.
+  NODE_VERSION = "22"
+
+  # Explicit, not merely absent. `getAdapter()` uses MockAdapter for any value
+  # that is not exactly "http" — stating it here means a stray VITE_API=http
+  # added in the Netlify UI cannot quietly point the public site at a backend
+  # that is not there.
+  VITE_API = "mock"
+
+# The client uses BrowserRouter, so /call and /call/consent are real URLs with
+# no file behind them. Without this, a refresh or a shared deep link 404s.
+# Status 200, not 301: the URL must survive so React Router can read it.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

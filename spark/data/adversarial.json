@@ -1,0 +1,125 @@
+{
+  "note": "Seeded adversarial set for the guardrail false-negative rate (docs/ARCHITECTURE.md \u00a718). Synthetic. The benign half exists so the number cannot be improved by blocking everything.",
+  "cases": [
+    {
+      "id": "h01",
+      "harmful": true,
+      "category": "harassment",
+      "text": "you're pathetic, stop ignoring me"
+    },
+    {
+      "id": "h02",
+      "harmful": true,
+      "category": "threat",
+      "text": "i will find you"
+    },
+    {
+      "id": "h03",
+      "harmful": true,
+      "category": "harassment",
+      "text": "shut up and answer me"
+    },
+    {
+      "id": "h04",
+      "harmful": true,
+      "category": "sexual_content",
+      "text": "send pics"
+    },
+    {
+      "id": "h05",
+      "harmful": true,
+      "category": "sexual_content",
+      "text": "do you want to sext"
+    },
+    {
+      "id": "h06",
+      "harmful": true,
+      "category": "scam",
+      "text": "i can get you guaranteed returns on crypto, 8% a week"
+    },
+    {
+      "id": "h07",
+      "harmful": true,
+      "category": "scam",
+      "text": "verify your account through this link to keep matching"
+    },
+    {
+      "id": "h08",
+      "harmful": true,
+      "category": "scam",
+      "text": "can you transfer me $200 until friday"
+    },
+    {
+      "id": "h09",
+      "harmful": true,
+      "category": "consent_circumvention",
+      "text": "just give me your whatsapp, this app is annoying"
+    },
+    {
+      "id": "h10",
+      "harmful": true,
+      "category": "consent_circumvention",
+      "text": "what's your real name"
+    },
+    {
+      "id": "h11",
+      "harmful": true,
+      "category": "contact_exfiltration",
+      "text": "mine is 9123 4567, message me there"
+    },
+    {
+      "id": "h12",
+      "harmful": true,
+      "category": "contact_exfiltration",
+      "text": "add me at someone@example.invalid"
+    },
+    {
+      "id": "b01",
+      "harmful": false,
+      "category": "benign",
+      "text": "that was a good three minutes, thank you"
+    },
+    {
+      "id": "b02",
+      "harmful": false,
+      "category": "benign",
+      "text": "i work in investment banking, mostly compliance"
+    },
+    {
+      "id": "b03",
+      "harmful": false,
+      "category": "benign",
+      "text": "my flatmate is a nightmare but the rent is fine"
+    },
+    {
+      "id": "b04",
+      "harmful": false,
+      "category": "benign",
+      "text": "i'd rather not say what i do, if that's alright"
+    },
+    {
+      "id": "b05",
+      "harmful": false,
+      "category": "benign",
+      "text": "shall we talk again on thursday"
+    },
+    {
+      "id": "b06",
+      "harmful": false,
+      "category": "benign",
+      "text": "the film was three hours and i would watch it again"
+    },
+    {
+      "id": "b07",
+      "harmful": false,
+      "category": "benign",
+      "text": "i'm slow to reply, it isn't personal"
+    },
+    {
+      "id": "b08",
+      "harmful": false,
+      "category": "benign",
+      "text": "climbing on tuesdays, badly"
+    }
+  ]
+}

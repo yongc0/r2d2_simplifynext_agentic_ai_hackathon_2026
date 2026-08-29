@@ -1,0 +1,58 @@
+# Spark — dependencies.
+#
+# Mirrors the [project] table in pyproject.toml, which is the source of truth.
+# `uv sync` resolves from uv.lock and pins every transitive dependency exactly;
+# this file is here because the organisers ask for a requirements.txt, and it
+# is what `pip install -r requirements.txt` needs.
+#
+#     uv sync                  # preferred — exact, locked, ~15s
+#     pip install -r requirements.txt
+
+# --- orchestration ---------------------------------------------------------
+# LangGraph is the supervisor. Two things the MVP could not fake: durable
+# checkpointed threads that span weeks, and interrupt(), which IS the consent
+# gate (docs/ARCHITECTURE.md §11.4).
+langgraph>=0.6
+langgraph-checkpoint-sqlite>=2.0
+langchain-core>=0.3
+
+# --- models ----------------------------------------------------------------
+# The local development / iteration tier. Bedrock lives in the aws extra below.
+langchain-groq>=1.1
+
+# --- schemas ---------------------------------------------------------------
+# Every agent output is a pydantic model. Schema validation pass rate is a
+# graded metric; it is only measurable because these exist.
+pydantic>=2.11
+
+# --- tools -----------------------------------------------------------------
+# Every external capability is an MCP server. These are real servers:
+# `uv run -m src.mcp.overlap` speaks MCP over stdio.
+mcp>=1.2
+
+# --- observability ---------------------------------------------------------
+# One trace per encounter and per continuity action. The trace is the
+# debugging tool, the explainability source, and the demo.
+opentelemetry-api>=1.27
+opentelemetry-sdk>=1.27
+
+# --- http ------------------------------------------------------------------
+# The API the demo client talks to. It drives the SAME supervisor graph the CLI
+# and the evaluation drive — the consent gate over HTTP is the same LangGraph
+# interrupt(), not a reimplementation of it.
+fastapi>=0.115
+uvicorn[standard]>=0.32
+
+# --- diagrams --------------------------------------------------------------
+# Lets the compiled graph draw itself: `uv run -m src.cli.encounter --graph`.
+grandalf>=0.8
+
+# --- optional: Bedrock -----------------------------------------------------
+# `uv sync --extra aws`, or uncomment these two lines for pip.
+# boto3>=1.42
+# langchain-aws>=1.4.3
+
+# --- optional: tests -------------------------------------------------------
+# `uv sync --extra dev`, or uncomment for pip.
+# pytest>=8.3
+# pytest-asyncio>=0.24

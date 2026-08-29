@@ -36,3 +36,10 @@ lab/section_6_agentcore/agent/dependencies.hash
 *.pptx
 ~$*
 *_solution.py
+
+# A stray local file: `lab/env` (no dot) holds a GROQ_MODEL setting and nothing
+# else. The lab reads `lab/.env`, so this one is a typo somebody made locally.
+# Ignored rather than deleted — it is not ours to remove from a working tree —
+# and deliberately NOT staged, because a file named like a dotenv is the last
+# place a credential should be able to arrive unnoticed.
+lab/env
