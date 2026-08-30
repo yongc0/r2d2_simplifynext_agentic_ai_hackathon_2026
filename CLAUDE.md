@@ -56,12 +56,12 @@ uv run -m eval.run_arms                  # Spark vs random vs similarity
 uv run -m eval.report                    # emits metric tables for the slides
 
 uv run -m src.api                        # the HTTP API on :8000
-uv run pytest                            # all tests (242 passed, 1 skipped)
+uv run pytest                            # all tests (272 passed, 1 skipped)
 uv run pytest tests/test_consent.py -v   # the invariants — run before every commit
 
 cd ../web                                # the demo client
 npm install && npm run dev               # :5173, no backend needed
-npm test                                 # UI invariants 1-7 (175 passed)
+npm test                                 # UI invariants 1-7 (200 passed)
 ```
 
 Running both together, and what is still stubbed: `docs/PILOT.md`.

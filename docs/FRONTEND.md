@@ -346,7 +346,7 @@ Add a test in `web/src/__tests__/invariants.test.tsx` asserting that pre-reveal 
 placeholder. `/home` was never in the list above — a gap in this build order —
 and shipped with milestone 6, since §5.2 puts the lock-in list on it.
 
-Tests: **175 passing, no warnings.** All seven §9 invariants have a screen-level
+Tests: **200 passing, no warnings.** All seven §9 invariants have a screen-level
 test, indexed and asserted in `invariants.test.tsx` so deleting one to make a
 feature pass fails loudly. The fixtures `MockAdapter` shares with the Python
 agents — the onboarding keyword lists and the call transcript — are held in step

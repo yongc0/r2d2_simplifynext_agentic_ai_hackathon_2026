@@ -415,6 +415,11 @@ def suggest_venues(
                 "fit_score": round(score, 3),
                 "is_commercial_partner": venue["is_commercial_partner"],
                 "category": venue.get("category", "activity"),
+                # Structured attributes Date Studio filters and scores on.
+                "budget": venue.get("budget", "flexible"),
+                "duration": venue.get("duration", "two_hours"),
+                "energy": venue.get("energy", "medium"),
+                "format": venue.get("format", "activity"),
             }
         )
     return {"bucket": bucket, "options": out}

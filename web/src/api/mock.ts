@@ -27,8 +27,14 @@ import type {
   AgentEvent,
   ConsentOutcome,
   ContinuityBrief,
+  DateMemory,
+  DatePath,
   DatePlan,
+  DatePreferences,
   EncounterCard,
+  PlanLockIn,
+  PlanShape,
+  RejectionReason,
   LockIn,
   OnboardingTurn,
   RevealedPerson,
@@ -246,6 +252,18 @@ export class MockAdapter implements Adapter {
   /** Simulated days since the lock-in opened. Drives the Continuity Agent. */
   private dayOffset = 0;
   private timers: ReturnType<typeof setTimeout>[] = [];
+  /** Date Studio's memory, offline. Cleared by `reset()` so takes stay
+   *  deterministic — the same rule the backend follows. */
+  private memory: DateMemory[] = [];
+  /** Plans actually shown, so feedback can be validated and attributed. */
+  private plans = new Map<string, { lockInId: string; leadVenueId: string }>();
+  private feedback: {
+    planId: string;
+    lockInId: string;
+    action: string;
+    reasons: RejectionReason[];
+    leadVenueId: string;
+  }[] = [];
   /** Where trace events go, while something is listening. */
   private emit: ((event: AgentEvent) => void) | null = null;
   /** The simulated instant the current trace started, for event timestamps. */
@@ -332,12 +350,11 @@ export class MockAdapter implements Adapter {
   }
 
   /**
-   * Three scripted evenings, grounded in the same shared interests the reveal
-   * screen shows.
+   * COMPATIBILITY WRAPPER for the encounter-based `/dates` route.
    *
-   * Gated on `revealed` for the same reason `getLockIns` is: a date plan names
-   * places two people are going TOGETHER, which only makes sense — and is only
-   * permitted — once they have both said yes.
+   * Delegates to `generateDatePlans` rather than keeping a second scripted
+   * list. Two implementations of the same feature drift, and the one nobody
+   * looks at is the one that ends up on camera.
    */
   async getDatePlan(_encounterId: string): Promise<DatePlan> {
     if (!this.revealed) {
@@ -346,49 +363,7 @@ export class MockAdapter implements Adapter {
         note: "Date planning opens once you have both said yes.",
       };
     }
-    return {
-      note: "",
-      paths: [
-        {
-          pathId: "path-birds",
-          headline:
-            "A morning walk with binoculars, then a wet market breakfast",
-          stops: [
-            { venueId: "v-birds", activity: "a morning walk with binoculars", category: "activity", isCommercialPartner: false },
-            { venueId: "f-market", activity: "a wet market breakfast", category: "food", isCommercialPartner: false },
-          ],
-          groundedIn: ["birdwatching"],
-          rationale:
-            "You have both mentioned birdwatching, and you are both usually free in the early morning.",
-          proposedBucket: "early_morning",
-        },
-        {
-          pathId: "path-coffee",
-          headline: "Three cafes in an afternoon, ranked, then a tea house, the slow kind",
-          stops: [
-            { venueId: "v-cafe", activity: "three cafes in an afternoon, ranked", category: "activity", isCommercialPartner: false },
-            { venueId: "d-tea", activity: "a tea house, the slow kind", category: "drink", isCommercialPartner: false },
-          ],
-          groundedIn: ["coffee"],
-          rationale:
-            "You have both mentioned coffee, and you are both usually free in the afternoon.",
-          proposedBucket: "afternoon",
-        },
-        {
-          pathId: "path-bakery",
-          headline: "A bakery that does one thing properly",
-          stops: [
-            // A commercial partner, and labelled as one. §13.6: partners may
-            // only appear where they already rank, and are always disclosed.
-            { venueId: "f-bakery", activity: "a bakery that does one thing properly", category: "food", isCommercialPartner: true },
-          ],
-          groundedIn: ["coffee"],
-          rationale:
-            "You have both mentioned coffee, and you are both usually free in the early morning.",
-          proposedBucket: "early_morning",
-        },
-      ],
-    };
+    return this.generateDatePlans("lock-78f62d9d60cf", {});
   }
 
   async recordGuardianCheckIn(
@@ -398,6 +373,226 @@ export class MockAdapter implements Adapter {
     // Nothing to record offline. The consequence a person can SEE — the
     // encounter closing without the reveal gate opening — is in `Call.tsx`
     // and does not depend on this.
+  }
+
+  // --- Date Studio -----------------------------------------------------
+  //
+  // A real loop, offline. The public Netlify build runs on this adapter, so a
+  // reviewer has to be able to reject a plan and SEE the next set change —
+  // otherwise the retention claim is a screenshot.
+  //
+  // It follows the same rules as the backend, in miniature: explicit
+  // preferences outrank inferred ones, one rejection nudges rather than
+  // deletes, a lock-in's feedback stays with that lock-in, and nothing is
+  // remembered unless the person asked for it.
+  //
+  // It is NOT the backend. The scoring is simpler and the catalogue is fixed.
+  // Nothing in the UI may describe this trace as live OTEL spans.
+
+  async getPlanLockIns(): Promise<PlanLockIn[]> {
+    const lockIns = await this.getLockIns();
+    return lockIns.map((lockIn) => ({
+      lockInId: lockIn.lockInId,
+      person: lockIn.person,
+      state: lockIn.state,
+      unavailableReason:
+        lockIn.state === "released" ? "This connection has been released." : null,
+    }));
+  }
+
+  async getDatePreferences(lockInId: string): Promise<DatePreferences> {
+    const remembered = this.memory.filter(
+      (m) => m.scope === "user" || m.lockInId === lockInId,
+    );
+    const value = (dimension: string) =>
+      remembered.find((m) => m.dimension === dimension)?.value ?? null;
+
+    return {
+      mood: value("mood") as DatePreferences["mood"],
+      budget: value("budget") as DatePreferences["budget"],
+      duration: value("duration") as DatePreferences["duration"],
+      energy: value("energy") as DatePreferences["energy"],
+      formats: [],
+      timeBucket: null,
+      sharedBuckets: ["morning", "afternoon", "evening"],
+      prefilled: remembered.length > 0,
+    };
+  }
+
+  async generateDatePlans(
+    lockInId: string,
+    preferences: Partial<DatePreferences> & { remember?: boolean },
+  ): Promise<DatePlan> {
+    if (!this.revealed) {
+      return {
+        paths: [],
+        note: "Date planning opens once you have both said yes.",
+      };
+    }
+
+    // OPT-IN, and only then. Tonight's mood is context, not a preference.
+    if (preferences.remember) {
+      for (const dimension of ["mood", "budget", "duration", "energy"] as const) {
+        const value = preferences[dimension];
+        if (value) this.remember(dimension, value, "explicit", "user");
+      }
+    }
+
+    const rejected = new Set(
+      this.feedback
+        .filter((f) => f.lockInId === lockInId && f.action === "rejected")
+        .flatMap((f) => f.reasons),
+    );
+    const seenLeads = new Set(
+      this.feedback
+        .filter((f) => f.lockInId === lockInId && f.action === "rejected")
+        .map((f) => f.leadVenueId),
+    );
+
+    const scored = MOCK_CANDIDATES.map((candidate) => {
+      let score = 0;
+      // What they asked for, weighted highest — a stated constraint is not a
+      // hint.
+      if (preferences.budget && candidate.budget === preferences.budget) score += 1;
+      if (preferences.energy && candidate.energy === preferences.energy) score += 1;
+      if (preferences.duration && candidate.duration === preferences.duration) score += 1;
+      // What we remember, weighted by confidence.
+      for (const item of this.memory) {
+        if (item.scope === "lockin" && item.lockInId !== lockInId) continue;
+        if (
+          (item.dimension === "budget" && candidate.budget === item.value) ||
+          (item.dimension === "energy" && candidate.energy === item.value) ||
+          (item.dimension === "duration" && candidate.duration === item.value)
+        ) {
+          score += 0.5 * item.confidence;
+        }
+      }
+      // What they turned down — a nudge, never a deletion.
+      if (rejected.has("too_long") && candidate.duration === "whole_evening") score -= 0.4;
+      if (rejected.has("too_expensive") && candidate.budget === "under_50") score -= 0.4;
+      if (rejected.has("too_active") && candidate.energy === "high") score -= 0.4;
+      if (rejected.has("too_crowded") && candidate.format === "event") score -= 0.4;
+      if (seenLeads.has(candidate.venueId)) score -= 0.6;
+      return { candidate, score };
+    });
+
+    // Deterministic: score, then id, so ties never depend on array order.
+    scored.sort((a, b) =>
+      b.score - a.score || a.candidate.venueId.localeCompare(b.candidate.venueId),
+    );
+
+    const shapes: PlanShape[] = ["easy", "new", "light"];
+    const paths: DatePath[] = scored.slice(0, 3).map((entry, i) => {
+      const c = entry.candidate;
+      const evidence: string[] = [`you have both mentioned ${c.grounded}`];
+      if (preferences.budget && c.budget === preferences.budget) {
+        evidence.push(`you asked for ${BUDGET_WORDS[preferences.budget]}`);
+      }
+      if (preferences.energy && c.energy === preferences.energy) {
+        evidence.push(`you asked for ${ENERGY_WORDS[preferences.energy]}`);
+      }
+      const pathId = `${lockInId}-${shapes[i]}-${c.venueId}`;
+      // Snapshot what was shown. Deriving the lock-in and the lead venue back
+      // out of the id later meant splitting on "-", and venue ids contain
+      // hyphens — so feedback attached to the wrong connection and taught
+      // nothing. Store it rather than parse it.
+      this.plans.set(pathId, { lockInId, leadVenueId: c.venueId });
+      return {
+        pathId,
+        headline: c.headline,
+        shape: shapes[i],
+        budgetBand: c.budget,
+        durationBand: c.duration,
+        stops: c.stops,
+        groundedIn: [c.grounded],
+        // Assembled from what actually scored — never written first and
+        // justified afterwards.
+        rationale: `You are both free in the evening. ${cap(evidence.join(", "))}.`,
+        proposedBucket: "evening",
+      };
+    });
+
+    return { paths, note: paths.length < 3 ? "Only what genuinely fits." : "" };
+  }
+
+  async sendDateFeedback(
+    planId: string,
+    action: "saved" | "rejected" | "completed",
+    reasons: RejectionReason[] = [],
+  ): Promise<void> {
+    const shown = this.plans.get(planId);
+    if (!shown) return;                 // never offered; nothing to learn from
+    const { lockInId, leadVenueId } = shown;
+
+    // IDEMPOTENT. Previous answers for this plan are dropped before the new one
+    // is added, so a double-tap does not double-learn and changing your mind
+    // leaves exactly one active answer.
+    this.feedback = this.feedback.filter((f) => f.planId !== planId);
+    this.feedback.push({ planId, lockInId, action, reasons, leadVenueId });
+
+    if (action === "rejected") {
+      for (const reason of reasons) {
+        const learned = REASON_LEARNS[reason];
+        // A reason that names no dimension teaches nothing. Guessing one from
+        // "not our style" would be inventing a preference from a shrug.
+        if (learned) {
+          this.remember(learned[0], learned[1], "feedback", "lockin", lockInId);
+        }
+      }
+    }
+  }
+
+  async getDateMemory(lockInId?: string): Promise<DateMemory[]> {
+    return this.memory.filter(
+      (m) => m.scope === "user" || (lockInId ? m.lockInId === lockInId : false),
+    );
+  }
+
+  async correctDateMemory(memoryId: string, value: string): Promise<void> {
+    const item = this.memory.find((m) => m.memoryId === memoryId);
+    if (!item) return;
+    // A correction is explicit by definition: having been told, stop weighing
+    // what was inferred.
+    item.value = value;
+    item.source = "explicit";
+    item.confidence = 1;
+    item.updatedAt = this.simulatedNow().toISOString();
+  }
+
+  async forgetDateMemory(memoryId: string): Promise<void> {
+    this.memory = this.memory.filter((m) => m.memoryId !== memoryId);
+  }
+
+  /** One belief per (scope, lock-in, dimension) — upsert, never accumulate. */
+  private remember(
+    dimension: string,
+    value: string,
+    source: "explicit" | "feedback",
+    scope: "user" | "lockin",
+    lockInId?: string,
+  ): void {
+    const memoryId = `mem:${scope}:${lockInId ?? "-"}:${dimension}`;
+    const existing = this.memory.find((m) => m.memoryId === memoryId);
+    const now = this.simulatedNow().toISOString();
+
+    if (!existing) {
+      this.memory.push({
+        memoryId, scope, lockInId: lockInId ?? null, dimension, value, source,
+        confidence: source === "explicit" ? 1 : 0.2,
+        updatedAt: now,
+      });
+      return;
+    }
+    if (source === "explicit") {
+      existing.value = value;
+      existing.source = "explicit";
+      existing.confidence = 1;
+    } else if (existing.source !== "explicit") {
+      // Climbs toward the cap. One rejection nudges; repetition persuades.
+      existing.value = value;
+      existing.confidence = Math.min(existing.confidence + 0.2, 0.6);
+    }
+    existing.updatedAt = now;
   }
 
   async getLockIns(): Promise<LockIn[]> {
@@ -508,6 +703,9 @@ export class MockAdapter implements Adapter {
     this.forced = null;
     this.dayOffset = 0;
     this.revealed = false;
+    this.memory = [];
+    this.feedback = [];
+    this.plans.clear();
   }
 
   async forceOutcome(outcome: ConsentOutcome | null): Promise<void> {
@@ -536,4 +734,86 @@ export class MockAdapter implements Adapter {
     };
   }
 
+}
+
+// ---------------------------------------------------------------------------
+// The offline catalogue
+// ---------------------------------------------------------------------------
+//
+// Kinds of place, never named businesses — none of these exists. Naming a real
+// restaurant in a demo built on synthetic people would be inventing a
+// recommendation about a real business.
+//
+// No address, distance or coordinate here or anywhere downstream: a date plan
+// is the one thing allowed to point somewhere, and it is safe only because
+// nothing in the ranking can read a location.
+
+const MOCK_CANDIDATES = [
+  {
+    venueId: "v-birds", headline: "A morning walk with binoculars, then a wet market breakfast",
+    grounded: "birdwatching", budget: "free", duration: "two_hours", energy: "low", format: "outdoors",
+    stops: [
+      { venueId: "v-birds", activity: "a morning walk with binoculars", category: "activity" as const, isCommercialPartner: false },
+      { venueId: "f-market", activity: "a wet market breakfast", category: "food" as const, isCommercialPartner: false },
+    ],
+  },
+  {
+    venueId: "v-cafe", headline: "Three cafes in an afternoon, ranked, then a tea house",
+    grounded: "coffee", budget: "under_20", duration: "whole_evening", energy: "low", format: "activity",
+    stops: [
+      { venueId: "v-cafe", activity: "three cafes in an afternoon, ranked", category: "activity" as const, isCommercialPartner: false },
+      { venueId: "d-tea", activity: "a tea house, the slow kind", category: "drink" as const, isCommercialPartner: false },
+    ],
+  },
+  {
+    venueId: "f-bakery", headline: "A bakery that does one thing properly",
+    grounded: "coffee", budget: "under_20", duration: "one_hour", energy: "low", format: "food",
+    stops: [
+      // A commercial partner, labelled. §13.6: partners may only appear where
+      // they already rank, and are always disclosed beside the venue.
+      { venueId: "f-bakery", activity: "a bakery that does one thing properly", category: "food" as const, isCommercialPartner: true },
+    ],
+  },
+  {
+    venueId: "v-music", headline: "A small gig, standing room, then late supper",
+    grounded: "birdwatching", budget: "under_50", duration: "whole_evening", energy: "high", format: "event",
+    stops: [
+      { venueId: "v-music", activity: "a small gig, standing room", category: "activity" as const, isCommercialPartner: true },
+      { venueId: "f-supper", activity: "late supper after everything else shuts", category: "food" as const, isCommercialPartner: false },
+    ],
+  },
+  {
+    venueId: "v-garden", headline: "The botanic gardens, slowly",
+    grounded: "birdwatching", budget: "free", duration: "one_hour", energy: "low", format: "outdoors",
+    stops: [
+      { venueId: "v-garden", activity: "the botanic gardens, slowly", category: "activity" as const, isCommercialPartner: false },
+    ],
+  },
+];
+
+/** A rejection reason -> the belief it argues for. Reasons that name no
+ *  dimension are recorded and teach nothing, on purpose. */
+const REASON_LEARNS: Record<string, [string, string] | undefined> = {
+  too_expensive: ["budget", "free"],
+  too_long: ["duration", "one_hour"],
+  too_active: ["energy", "low"],
+  too_quiet: ["energy", "high"],
+  too_crowded: ["format", "outdoors"],
+};
+
+const BUDGET_WORDS: Record<string, string> = {
+  free: "something free",
+  under_20: "something under $20",
+  under_50: "something under $50",
+  flexible: "no particular budget",
+};
+
+const ENERGY_WORDS: Record<string, string> = {
+  low: "something relaxed",
+  medium: "something in between",
+  high: "something active",
+};
+
+function cap(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

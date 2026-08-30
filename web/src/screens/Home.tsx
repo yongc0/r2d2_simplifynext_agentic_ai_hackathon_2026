@@ -171,6 +171,16 @@ export default function Home() {
         </section>
       ) : null}
 
+      {active.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => navigate("/plans")}
+          className="mt-4 w-full rounded-pill bg-white/[0.06] px-6 py-3 text-sm text-text transition-colors hover:bg-white/[0.1]"
+        >
+          Plan something
+        </button>
+      ) : null}
+
       <div className="flex-1" />
 
       <p className="text-center text-xs leading-relaxed text-muted/70">

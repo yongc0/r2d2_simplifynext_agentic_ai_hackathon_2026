@@ -161,7 +161,7 @@ function Slot({
                     because two people already exchanged names. */}
                 <button
                   type="button"
-                  onClick={() => navigate("/dates")}
+                  onClick={() => navigate(`/plans/${lockIn.lockInId}`)}
                   className="rounded-pill bg-accent/20 px-4 py-2 text-xs text-accent-soft ring-1 ring-accent/25 ring-inset transition-colors hover:bg-accent/30"
                 >
                   Plan something

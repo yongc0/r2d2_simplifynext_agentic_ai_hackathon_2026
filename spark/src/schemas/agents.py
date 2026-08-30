@@ -218,6 +218,13 @@ class DatePath(BaseModel):
     rationale: str = Field(min_length=1, max_length=300)
     fit_score: float = Field(ge=0.0, le=1.0)
     proposed_bucket: TimeBucket
+    #: Which of the three offers this is. A presentation category describing the
+    #: PLAN — never a claim about the people, who have not been sorted into
+    #: easy-going and adventurous by anything here.
+    shape: Literal["easy", "new", "light"] = "easy"
+    #: As shown, so feedback like "too expensive" has something to attach to.
+    budget_band: str = "flexible"
+    duration_band: str = "two_hours"
 
     @property
     def has_commercial_partner(self) -> bool:

@@ -53,69 +53,81 @@ _CELL_PLACES = (
 #: "near where you both were" — which is precisely the inference the invariant
 #: exists to prevent.
 #:
-#: (venue_id, activity, tags, is_commercial_partner, category, when)
+#: The venue catalogue.
 #:
-#: `when` is a coarse band, not a set of opening hours. Places suit parts of
-#: the day, and the previous version gave every venue every bucket except
-#: night — which meant a pair whose only shared free time was late got nothing
-#: at all, and the one venue explicitly about being late ("late supper after
-#: everything else shuts") was closed then. A pottery bench at 22:00 is a
-#: suggestion nobody can act on; so is a hawker centre at 06:00.
+#: Dicts rather than tuples: Date Studio scores on budget, duration, energy and
+#: format as well as tags, and an eight-field positional tuple is a row nobody
+#: can read or safely edit.
+#:
+#: These are KINDS OF PLACE, never named businesses. None of them exists.
+#: Naming a real restaurant in a demo built on 60 synthetic people would be
+#: inventing a recommendation about a real business, which is not ours to make.
+#:
+#: INVARIANT 3 lives in what is ABSENT here: no address, no cell, no coordinate,
+#: no distance. A date plan is the one feature allowed to point somewhere, and
+#: it is safe only because no ranking can become "near where you both were" —
+#: there is nothing here for such a ranking to read.
+#:
+#: WHAT IS DELIBERATELY NOT MODELLED: accessibility and dietary suitability.
+#: Both matter more than anything in this table, and both would be worse than
+#: useless as a guess — an unverified "step-free" claim is how somebody arrives
+#: somewhere they cannot get into. They belong with real venue data, and until
+#: then Date Studio must not offer a filter it cannot honour.
+#:
+#: `when` is a coarse band, not opening hours. Places suit parts of the day: a
+#: pottery bench at 22:00 is a suggestion nobody can act on, and so is a hawker
+#: centre at 06:00.
+def _v(vid, activity, tags, partner, category, when, budget, duration, energy, fmt):
+    return {
+        "id": vid, "activity": activity, "tags": tags, "partner": partner,
+        "category": category, "when": when, "budget": budget,
+        "duration": duration, "energy": energy, "format": fmt,
+    }
+
+
 _VENUE_SEED = (
     # --- things to do -----------------------------------------------------
-    ("v-climb", "an hour on the bouldering wall", ("climbing", "hiking"), False, "activity", "day"),
-    ("v-run", "a slow loop round the reservoir", ("running", "cycling"), False, "activity", "early"),
-    ("v-cook", "a two-hour cooking class", ("cooking", "baking"), True, "activity", "evening"),
-    ("v-film", "an early screening and an argument about it after",
-     ("film", "reading"), False, "activity", "evening"),
-    ("v-music", "a small gig, standing room", ("live music", "film"), True, "activity", "late"),
-    ("v-games", "a board-game cafe, no phones", ("board games", "chess"), True, "activity", "evening"),
-    ("v-pottery", "a beginners' pottery bench", ("pottery", "woodwork"), True, "activity", "day"),
-    ("v-swim", "an early swim", ("swimming", "yoga"), False, "activity", "early"),
-    ("v-birds", "a morning walk with binoculars", ("birdwatching", "photography"), False, "activity", "early"),
-    ("v-volunteer", "a Saturday shift at a food bank", ("volunteering", "gardening"), False, "activity", "day"),
-    ("v-lang", "a language exchange evening", ("languages", "reading"), False, "activity", "evening"),
-    ("v-garden", "the botanic gardens, slowly", ("gardening", "photography"), False, "activity", "day"),
-    ("v-chess", "chess in a park, badly", ("chess", "board games"), False, "activity", "day"),
-    ("v-cycle", "a night ride when the roads are empty",
-     ("cycling", "running"), False, "activity", "late"),
-    ("v-read", "a bookshop that stays open late", ("reading", "film"), False, "activity", "late"),
-    # Filling gaps found while building the Date Agent: several common
-    # interests had no ACTIVITY at all, so pairs who shared them got a plan
-    # made of two drinks or nothing. A catalogue thin in one corner produces
-    # honest emptiness, which is worse than it sounds when the corner is
-    # "coffee".
-    ("v-cafe", "three cafes in an afternoon, ranked", ("coffee", "photography"), False, "activity", "day"),
-    ("v-football", "five-a-side, whoever turns up", ("football", "running"), False, "activity", "evening"),
-    ("v-shophouse", "a walk through the old shophouses", ("photography", "reading"), False, "activity", "day"),
-    ("v-yoga", "a beginners' class, both of you bad at it", ("yoga", "swimming"), True, "activity", "early"),
-    ("v-library", "the reading room, phones off", ("reading", "languages"), False, "activity", "day"),
-    ("v-karaoke", "karaoke, badly, until they ask you to stop",
-     ("live music", "languages"), True, "activity", "late"),
-    ("v-nightmarket", "a night market, eat as you go", ("cooking", "photography"), False, "activity", "late"),
-    ("v-doublebill", "a late double bill", ("film", "reading"), False, "activity", "late"),
-    ("v-pool", "lengths, then breakfast", ("swimming", "running"), False, "activity", "early"),
-    ("v-langcafe", "a language exchange over coffee", ("languages", "coffee"), False, "activity", "day"),
+    _v("v-climb", "an hour on the bouldering wall", ("climbing", "hiking"), False, "activity", "day", "under_20", "one_hour", "high", "activity"),
+    _v("v-run", "a slow loop round the reservoir", ("running", "cycling"), False, "activity", "early", "free", "one_hour", "high", "outdoors"),
+    _v("v-cook", "a two-hour cooking class", ("cooking", "baking"), True, "activity", "evening", "under_50", "two_hours", "medium", "learning"),
+    _v("v-film", "an early screening and an argument about it after", ("film", "reading"), False, "activity", "evening", "under_20", "two_hours", "low", "event"),
+    _v("v-music", "a small gig, standing room", ("live music", "film"), True, "activity", "late", "under_50", "whole_evening", "high", "event"),
+    _v("v-games", "a board-game cafe, no phones", ("board games", "chess"), True, "activity", "evening", "under_20", "two_hours", "low", "activity"),
+    _v("v-pottery", "a beginners' pottery bench", ("pottery", "woodwork"), True, "activity", "day", "under_50", "two_hours", "medium", "learning"),
+    _v("v-swim", "an early swim", ("swimming", "yoga"), False, "activity", "early", "free", "one_hour", "high", "activity"),
+    _v("v-birds", "a morning walk with binoculars", ("birdwatching", "photography"), False, "activity", "early", "free", "two_hours", "low", "outdoors"),
+    _v("v-volunteer", "a Saturday shift at a food bank", ("volunteering", "gardening"), False, "activity", "day", "free", "whole_evening", "medium", "learning"),
+    _v("v-lang", "a language exchange evening", ("languages", "reading"), False, "activity", "evening", "free", "two_hours", "low", "learning"),
+    _v("v-garden", "the botanic gardens, slowly", ("gardening", "photography"), False, "activity", "day", "free", "two_hours", "low", "outdoors"),
+    _v("v-chess", "chess in a park, badly", ("chess", "board games"), False, "activity", "day", "free", "one_hour", "low", "outdoors"),
+    _v("v-cycle", "a night ride when the roads are empty", ("cycling", "running"), False, "activity", "late", "free", "two_hours", "high", "outdoors"),
+    _v("v-read", "a bookshop that stays open late", ("reading", "film"), False, "activity", "late", "free", "one_hour", "low", "activity"),
+    _v("v-cafe", "three cafes in an afternoon, ranked", ("coffee", "photography"), False, "activity", "day", "under_20", "whole_evening", "low", "activity"),
+    _v("v-football", "five-a-side, whoever turns up", ("football", "running"), False, "activity", "evening", "free", "one_hour", "high", "activity"),
+    _v("v-shophouse", "a walk through the old shophouses", ("photography", "reading"), False, "activity", "day", "free", "two_hours", "low", "outdoors"),
+    _v("v-yoga", "a beginners' class, both of you bad at it", ("yoga", "swimming"), True, "activity", "early", "under_20", "one_hour", "medium", "learning"),
+    _v("v-library", "the reading room, phones off", ("reading", "languages"), False, "activity", "day", "free", "two_hours", "low", "learning"),
+    _v("v-karaoke", "karaoke, badly, until they ask you to stop", ("live music", "languages"), True, "activity", "late", "under_50", "whole_evening", "high", "event"),
+    _v("v-nightmarket", "a night market, eat as you go", ("cooking", "photography"), False, "activity", "late", "under_20", "two_hours", "medium", "outdoors"),
+    _v("v-doublebill", "a late double bill", ("film", "reading"), False, "activity", "late", "under_20", "whole_evening", "low", "event"),
+    _v("v-pool", "lengths, then breakfast", ("swimming", "running"), False, "activity", "early", "under_20", "one_hour", "high", "activity"),
+    _v("v-langcafe", "a language exchange over coffee", ("languages", "coffee"), False, "activity", "day", "under_20", "one_hour", "low", "learning"),
 
     # --- somewhere to eat -------------------------------------------------
-    ("f-hawker", "a hawker centre, one dish each and swap", ("cooking", "baking"), False, "food", "evening"),
-    ("f-noodles", "a noodle place with a queue worth joining", ("cooking", "film"), False, "food", "day"),
-    ("f-veg", "a vegetarian place neither of you has tried",
-     ("volunteering", "gardening"), False, "food", "day"),
-    ("f-bakery", "a bakery that does one thing properly", ("baking", "coffee"), True, "food", "early"),
-    ("f-supper", "late supper after everything else shuts",
-     ("live music", "film", "cooking"), False, "food", "late"),
-    ("f-market", "a wet market breakfast", ("cooking", "photography"), False, "food", "early"),
-    ("f-prata", "prata at the 24-hour place", ("cooking", "chess"), False, "food", "late"),
+    _v("f-hawker", "a hawker centre, one dish each and swap", ("cooking", "baking"), False, "food", "evening", "under_20", "one_hour", "low", "food"),
+    _v("f-noodles", "a noodle place with a queue worth joining", ("cooking", "film"), False, "food", "day", "under_20", "one_hour", "low", "food"),
+    _v("f-veg", "a vegetarian place neither of you has tried", ("volunteering", "gardening"), False, "food", "day", "under_50", "one_hour", "low", "food"),
+    _v("f-bakery", "a bakery that does one thing properly", ("baking", "coffee"), True, "food", "early", "under_20", "one_hour", "low", "food"),
+    _v("f-supper", "late supper after everything else shuts", ("live music", "film", "cooking"), False, "food", "late", "under_20", "one_hour", "low", "food"),
+    _v("f-market", "a wet market breakfast", ("cooking", "photography"), False, "food", "early", "under_20", "one_hour", "low", "food"),
+    _v("f-prata", "prata at the 24-hour place", ("cooking", "chess"), False, "food", "late", "free", "one_hour", "low", "food"),
 
     # --- somewhere to sit and talk ---------------------------------------
-    ("d-coffee", "coffee somewhere quiet enough to talk", ("coffee", "reading"), False, "drink", "day"),
-    ("d-tea", "a tea house, the slow kind", ("reading", "languages"), False, "drink", "day"),
-    ("d-wine", "a small wine bar, no list longer than a page",
-     ("film", "live music"), True, "drink", "late"),
-    ("d-kopi", "kopi and a long sit", ("coffee", "chess"), False, "drink", "early"),
-    ("d-late", "a kopitiam that never really closes",
-     ("coffee", "reading", "languages"), False, "drink", "late"),
+    _v("d-coffee", "coffee somewhere quiet enough to talk", ("coffee", "reading"), False, "drink", "day", "under_20", "one_hour", "low", "food"),
+    _v("d-tea", "a tea house, the slow kind", ("reading", "languages"), False, "drink", "day", "under_20", "one_hour", "low", "food"),
+    _v("d-wine", "a small wine bar, no list longer than a page", ("film", "live music"), True, "drink", "late", "under_50", "two_hours", "low", "food"),
+    _v("d-kopi", "kopi and a long sit", ("coffee", "chess"), False, "drink", "early", "free", "one_hour", "low", "food"),
+    _v("d-late", "a kopitiam that never really closes", ("coffee", "reading", "languages"), False, "drink", "late", "free", "one_hour", "low", "food"),
 )
 
 #: Which buckets each band covers. Bands overlap on purpose — an evening plan
@@ -186,19 +198,26 @@ class SimWorldBuilder:
         )
 
     def _seed_venues(self) -> None:
-        for venue_id, activity, tags, is_partner, category, when in _VENUE_SEED:
-            WORLD.venues[venue_id] = {
-                "id": venue_id,
-                "activity": activity,
-                "tags": list(tags),
+        for seed in _VENUE_SEED:
+            WORLD.venues[seed["id"]] = {
+                "id": seed["id"],
+                "activity": seed["activity"],
+                "tags": list(seed["tags"]),
                 # Per venue, from its band — not one blanket rule. See the note
                 # on `_VENUE_SEED`.
-                "buckets": list(_WHEN_BANDS[when]),
-                "is_commercial_partner": is_partner,
+                "buckets": list(_WHEN_BANDS[seed["when"]]),
+                "is_commercial_partner": seed["partner"],
                 #: activity | food | drink. Lets the Date Agent build an evening
                 #: out of a thing to do and somewhere to eat, rather than
                 #: offering three interchangeable single venues.
-                "category": category,
+                "category": seed["category"],
+                # Structured attributes Date Studio scores against. Real data
+                # rather than a guess derived at read time, so a hard filter on
+                # budget or duration means something.
+                "budget": seed["budget"],
+                "duration": seed["duration"],
+                "energy": seed["energy"],
+                "format": seed["format"],
             }
 
     def _seed_overlaps(self, day_zero: Date, days: int) -> None:

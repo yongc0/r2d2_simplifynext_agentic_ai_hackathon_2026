@@ -266,6 +266,11 @@ class DatePathOut(BaseModel):
     grounded_in: list[str] = Field(serialization_alias="groundedIn")
     rationale: str
     proposed_bucket: str = Field(serialization_alias="proposedBucket")
+    #: Which of the three offers this is. A category describing the PLAN, never
+    #: a claim about the people.
+    shape: str = "easy"
+    budget_band: str = Field(default="flexible", serialization_alias="budgetBand")
+    duration_band: str = Field(default="two_hours", serialization_alias="durationBand")
 
 
 class DatePlanOut(BaseModel):
@@ -306,3 +311,94 @@ class GuardianCheckInOut(BaseModel):
     #: What the person is told, in plain words. Never implies a human has
     #: already seen it — see the route.
     message: str
+
+
+# ---------------------------------------------------------------------------
+# Date Studio
+# ---------------------------------------------------------------------------
+#
+# INVARIANT 1 NOTE: nothing below has a field for an address, a coordinate, a
+# cell, a distance or a map, and nothing may gain one. Date plans are the only
+# thing in Spark allowed to point somewhere, and they are safe only because the
+# ranking behind them cannot read a location.
+
+
+class DatePreferencesOut(BaseModel):
+    """The saved constraints, plus what the form may offer.
+
+    `sharedBuckets` comes from the server because a time only one of them is
+    free is not a choice — offering it would produce a plan neither can attend.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    mood: str | None = None
+    budget: str | None = None
+    duration: str | None = None
+    energy: str | None = None
+    formats: list[str] = Field(default_factory=list)
+    time_bucket: str | None = Field(default=None, serialization_alias="timeBucket")
+    shared_buckets: list[str] = Field(
+        default_factory=list, serialization_alias="sharedBuckets"
+    )
+    #: True when these values came from memory rather than from this session, so
+    #: the form can say it prefilled them instead of pretending the person did.
+    prefilled: bool = False
+
+
+class DatePreferencesIn(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    mood: str | None = None
+    budget: str | None = None
+    duration: str | None = None
+    energy: str | None = None
+    formats: list[str] = Field(default_factory=list, max_length=5)
+    time_bucket: str | None = Field(default=None, alias="timeBucket")
+    #: OPT-IN. Tonight's mood is not a durable preference unless asked for.
+    remember: bool = False
+
+
+class DateMemoryOut(BaseModel):
+    """One remembered preference, as the memory panel shows it."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    memory_id: str = Field(serialization_alias="memoryId")
+    scope: Literal["user", "lockin"]
+    lockin_id: str | None = Field(default=None, serialization_alias="lockInId")
+    dimension: str
+    value: str
+    #: "explicit" or "feedback" — shown, because a person should be able to see
+    #: the difference between what they told Spark and what it inferred.
+    source: str
+    confidence: float
+    updated_at: str = Field(serialization_alias="updatedAt")
+
+
+class DateMemoryPatchIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    value: str = Field(min_length=1, max_length=64)
+
+
+class DateFeedbackIn(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    action: Literal["saved", "rejected", "completed"]
+    reasons: list[str] = Field(default_factory=list, max_length=8)
+
+
+class PlanLockInOut(BaseModel):
+    """A connection you can plan with, for the `/plans` hub."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    lock_in_id: str = Field(serialization_alias="lockInId")
+    person: RevealOut
+    state: Literal["active", "quiet", "released"]
+    #: Present and non-null only when planning is NOT available, so the hub can
+    #: say why rather than showing a dead button.
+    unavailable_reason: str | None = Field(
+        default=None, serialization_alias="unavailableReason"
+    )

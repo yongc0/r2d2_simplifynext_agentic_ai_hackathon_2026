@@ -17,8 +17,12 @@ import type {
   AgentEvent,
   ConsentOutcome,
   ContinuityBrief,
+  DateMemory,
   DatePlan,
+  DatePreferences,
   EncounterCard,
+  PlanLockIn,
+  RejectionReason,
   LockIn,
   OnboardingTurn,
   RevealedPerson,
@@ -96,6 +100,36 @@ export interface Adapter {
    * logging is the last thing they need.
    */
   recordGuardianCheckIn(encounterId: string, allRight: boolean): Promise<void>;
+
+  // --- Date Studio (§13.6) --------------------------------------------
+  //
+  // POST-REVEAL ONLY, and the server is the boundary. These calls return 409
+  // when planning is not open — a React redirect is helpful UX and is never
+  // what keeps a plan away from someone.
+
+  /** Connections that can be planned with, and why any cannot. */
+  getPlanLockIns(): Promise<PlanLockIn[]>;
+
+  /** Saved constraints, plus the times the pair genuinely share. */
+  getDatePreferences(lockInId: string): Promise<DatePreferences>;
+
+  /** Three ranked plans. `remember` is opt-in and defaults to off. */
+  generateDatePlans(
+    lockInId: string,
+    preferences: Partial<DatePreferences> & { remember?: boolean },
+  ): Promise<DatePlan>;
+
+  /** Structured feedback. Idempotent: repeating it must not double-learn. */
+  sendDateFeedback(
+    planId: string,
+    action: "saved" | "rejected" | "completed",
+    reasons?: RejectionReason[],
+  ): Promise<void>;
+
+  /** What Spark remembers about this viewer. */
+  getDateMemory(lockInId?: string): Promise<DateMemory[]>;
+  correctDateMemory(memoryId: string, value: string): Promise<void>;
+  forgetDateMemory(memoryId: string): Promise<void>;
 
   getLockIns(): Promise<LockIn[]>;
   getBriefs(): Promise<ContinuityBrief[]>;

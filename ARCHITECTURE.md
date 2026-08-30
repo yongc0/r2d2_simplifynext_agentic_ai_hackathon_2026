@@ -266,6 +266,22 @@ Venues are **kinds of place** — "a hawker centre, one dish each and swap" — 
 
 A path that cannot cite an interest **both** people listed is not built, for the same reason the Communication Agent may not invent a shared interest. When there is nothing to work with the agent returns an empty plan and says why, so a short list reads as a fact about the pair rather than as a failure.
 
+#### Date Studio
+
+The planner around that agent, and the product's answer to "why come back". The loop is: choose a connection → set constraints from fixed boxes → receive three grounded plans → save, reject with a reason, or refine → inspect and correct what Spark learned → better plans next time.
+
+**It remembers, and it does not train.** Preferences, plan snapshots and feedback are rows in SQLite (`src/memory/date_memory.py`), in the same database as the graph checkpoints so the memory and the encounters it is about are deleted together. Improvement is deterministic re-ranking over those rows — **nothing here updates a model's weights**, and no interface copy may imply it does. AgentCore Memory is the intended replacement for the store; it is a **target, not a live integration**, and nothing in this repository talks to it.
+
+**Memory has two scopes.** `user` items are true of a person across connections; `lockin` items apply to one pair only and must never influence another, because a reaction to one person is not a fact about them in general. Every item records whether it was chosen (`explicit`, confidence 1.0) or inferred from behaviour (`feedback`, capped at 0.6 and moved in steps), so an inference can never outrank something someone actually said and a single rejection is a nudge rather than a permanent dislike.
+
+**Remembering is opt-in.** A constraint set for tonight is context, not a preference. It is stored only when the person ticks *Remember this*, because a system that promotes tonight's mood into a durable belief will be wrong about someone forever without ever having been told anything untrue.
+
+**The scorer explains itself from its own terms.** `src/agents/date_scoring.py` records every term that moved the number, and the rationale is assembled from that record — so a plan cannot describe a reason the ranking did not use. Ranking happens before commercial-partner metadata is attached, unchanged from §13.6.
+
+**Ethical retention.** Saved plans, better recommendations and a memory-control surface. Deliberately absent: streaks, swipe feeds, manufactured urgency, "they are waiting for you", compatibility percentages, and any question about whether a date went well — Spark grades the recommendation, never the relationship. The intended metric is weekly meaningful planning actions per active lock-in, not session length.
+
+**Phase 2 (collaborative proposals) is designed, not built.** It needs two authenticated viewers, and there is no auth.
+
 ### 13.7 Guardian — `DETERMINISTIC` · *Embedded*
 
 A discreet in-app action triggers a preconfigured interruption giving the user a natural reason to leave, followed by a private check-in. Paired with an optional trusted-contact plan, a timed check-in after any first in-person meeting, and an incident log.

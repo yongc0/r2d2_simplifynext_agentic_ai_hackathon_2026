@@ -197,14 +197,23 @@ def test_an_extraction_may_be_honestly_incomplete():
 def test_every_agent_module_names_its_organiser_class():
     """CLAUDE.md's "adding an agent" checklist, enforced.
 
-    Every module in `src/agents/` (bar the shared base) declares which of the
+    Every module in `src/agents/` that IS an agent declares which of the
     organisers' eight classes it belongs to.
+
+    The exemptions are named rather than pattern-matched. A rule like "modules
+    whose class ends in Agent" would quietly excuse `delivery.py`, whose class
+    is `EncounterDelivery`; a list you have to edit makes adding an agent
+    without its class a visible act rather than an accident.
     """
     import src.agents as agents_pkg
 
+    #: Shared helpers, not agents. Each serves an agent that declares its own
+    #: class: `base` the loop cap, `date_scoring` the Date Agent's ranking.
+    helpers = {"base", "date_scoring"}
+
     missing = []
     for module_info in pkgutil.iter_modules(agents_pkg.__path__):
-        if module_info.name == "base":
+        if module_info.name in helpers:
             continue
         module = importlib.import_module(f"src.agents.{module_info.name}")
         if not getattr(module, "AGENT_CLASS", ""):

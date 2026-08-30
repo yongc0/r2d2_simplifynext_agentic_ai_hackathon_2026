@@ -38,8 +38,8 @@ backend still runs the whole experience. That is what the submission video is
 filmed against.
 
 ```bash
-cd spark && uv run pytest    # 242 passed, 1 skipped
-cd web   && npm test         # 175 passed
+cd spark && uv run pytest    # 272 passed, 1 skipped
+cd web   && npm test         # 200 passed
 ```
 
 ---

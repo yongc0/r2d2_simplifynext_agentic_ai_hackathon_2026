@@ -36,6 +36,7 @@ from src.graph.state import SparkRuntime
 from src.graph.supervisor import build_encounter_graph, pending_gate, sqlite_checkpointer
 from src.ids import encounter_id
 from src.mcp.registry import MCPClient
+from src.memory.date_memory import DateMemoryStore
 from src.mcp.services import WORLD
 from src.safety.consent import ConsentLedger, reveal_permitted
 from src.safety.trust import TrustAndSafety
@@ -105,6 +106,12 @@ def write_session_state(path: Path, key: str, value: str) -> None:
 
 class EncounterNotFound(LookupError):
     """No such encounter, in memory or in the checkpoint. Maps to HTTP 404."""
+
+
+#: Returned by `planning_refusal` when the lock-in does not exist at all.
+#: The routes turn this into a 404 and every other refusal into a 409, so
+#: "no such connection" and "not open for planning" stay distinguishable.
+UNKNOWN_LOCKIN = "unknown"
 
 
 class EncounterClosed(RuntimeError):
@@ -221,6 +228,14 @@ class SparkSession:
             users=dict(WORLD.users),
             encounter_counts=Counter(),
         )
+
+        # Date Studio's preference memory. Same file as the checkpoints, so the
+        # memory and the encounters it is about are deleted together — a stale
+        # preference store pointing at encounters that no longer exist is worse
+        # than no store. Survives a restart; cleared only by an explicit demo
+        # reset, because a preference learned in rehearsal would quietly change
+        # the ranking on camera.
+        self.date_memory = DateMemoryStore(SETTINGS.checkpoint_db)
 
         # Durable, so the consent gate survives a restart. `runs/` is gitignored.
         saver, conn = sqlite_checkpointer(SETTINGS.checkpoint_db)
@@ -402,6 +417,49 @@ class SparkSession:
         person whose day the demo is following (docs/PILOT.md §8)."""
         return lockin.user_a
 
+    def lockin(self, lockin_id: str) -> "LockIn | None":
+        return self._lockins.get(lockin_id)
+
+    def planning_refusal(self, lockin_id: str) -> str | None:
+        """Why date planning is not available, or None if it is.
+
+        ONE function, so every planning route refuses for the same reasons in
+        the same order. The conditions are the ones from the product decision
+        record, and they are all server-side: a React redirect is helpful, but
+        it is never the boundary.
+
+        Returns a sentence rather than a bool because the client shows it, and
+        "no" without a reason is the kind of dead end people file bugs about.
+        """
+        lockin = self._lockins.get(lockin_id)
+        if lockin is None:
+            # The sentinel the routes turn into a 404. Everything else below is
+            # a 409: the lock-in exists, planning is simply not open on it.
+            return UNKNOWN_LOCKIN
+
+        if lockin.state is LockInState.RELEASED:
+            return "This connection has been released."
+
+        viewer_id = self.viewer_id(lockin)
+        if viewer_id not in (lockin.user_a, lockin.user_b):
+            # Belt and braces: `viewer_id` derives from the lock-in itself, so
+            # this cannot currently fire. It stays because the day auth lands,
+            # a foreign lock-in becomes reachable and this is where it stops.
+            return "This connection is not yours."
+
+        encounter_id = lockin.id.replace("lock-", "", 1)
+        if self.guardian_closed(encounter_id):
+            # The safety closure outranks every retention feature. Planning an
+            # evening for someone who has just said something felt off is the
+            # worst thing this product could do.
+            return "This connection is closed."
+
+        for uid in (lockin.user_a, lockin.user_b):
+            user = WORLD.users.get(uid)
+            if user is not None and not user.consent_scope.allow_date_suggestions:
+                return "One of you has turned date suggestions off."
+        return None
+
     def advance_days(self, days: int) -> int:
         """Move the simulated clock forward, for §8's demo controls.
 
@@ -475,6 +533,8 @@ class SparkSession:
             self.close()
             self._encounters.clear()
             self._lockins.clear()
+            # Recorded takes must be deterministic.
+            DateMemoryStore(SETTINGS.checkpoint_db).clear()
             self.day_offset_extra = 0
             self.forced_peer_answer = None
 

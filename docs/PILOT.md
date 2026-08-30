@@ -12,7 +12,7 @@ Read alongside `CLAUDE.md` (invariants), `docs/ARCHITECTURE.md` (design) and
 
 | Piece | State |
 |---|---|
-| Supervisor graph, agents, evaluation | ✅ Complete, 242 tests |
+| Supervisor graph, agents, evaluation | ✅ Complete, 272 tests |
 | FastAPI backend over the real graph | ✅ Built — see §3 |
 | Demo client, all screens | ✅ Complete — 10 of 10 milestones, 164 tests, guarded routes, no stubs |
 | **Director panel** | ✅ Built — toggle with `D`, live token + elapsed counters |
@@ -104,13 +104,31 @@ There is no second implementation of the flow.
 | `GET /api/encounters/{id}/call-script` | Amplitude track for the waveform (**stubbed**, see §6) |
 | `POST /api/encounters/{id}/consent` | Answer the reveal gate — resumes gate 2. `409` unless the reveal gate is the pending one |
 | `POST /api/onboarding/extract` | One turn of intake, run by the real Onboarding Agent |
-| `GET /api/encounters/{id}/dates` | Three date paths from the Date Agent. `409` before a mutual yes |
+| `GET /api/encounters/{id}/dates` | Three date paths. `409` before a mutual yes. Compatibility wrapper — Date Studio uses the lock-in routes |
+| `GET /api/plans` | Connections that can be planned with, and why any cannot |
+| `GET/PUT /api/lockins/{id}/date-preferences` | Remembered constraints, and the times the pair genuinely share |
+| `POST /api/lockins/{id}/date-plans` | Three ranked plans from this request plus durable memory |
+| `POST /api/date-plans/{id}/feedback` | Saved, rejected (with reasons) or completed. Idempotent |
+| `GET/PATCH/DELETE /api/date-memory` | Read, correct and delete what Spark remembers |
 | `GET /api/lockins`, `GET /api/briefs` | The connections open in this run, and what Continuity would surface |
 | `POST /api/demo/advance-days` | Move the simulated clock — week 1 to week 5 inside a five-minute take |
 | `POST /api/encounters/{id}/guardian/check-in` | Record the private check-in answer |
 | `GET /api/events` | Director panel feed, Server-Sent Events from real OTEL spans |
 | `POST /api/demo/reset` | Deterministic reset (§8 of FRONTEND.md) |
 | `POST /api/demo/force-outcome` | Force the other party's answer, to film each branch |
+
+### The whole product, as a simulated session
+
+```bash
+uv run -m src.cli.rehearsal                    # mutual yes
+uv run -m src.cli.rehearsal --branch declined  # the close-out
+uv run -m src.cli.rehearsal --branch guardian  # the safety exit
+```
+
+Drives the real graph through every step and narrates it. Useful as a filming
+rehearsal, and as the honest version of a pilot: lines marked `[sim]` are the
+simulator playing the other person, because there is no auth and there is no
+second person. It prints that caveat itself, at the end, every run.
 
 ### A full encounter, by hand
 

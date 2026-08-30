@@ -22,8 +22,12 @@ import type {
   AgentEvent,
   ConsentOutcome,
   ContinuityBrief,
+  DateMemory,
   DatePlan,
+  DatePreferences,
   EncounterCard,
+  PlanLockIn,
+  RejectionReason,
   LockIn,
   OnboardingTurn,
   RevealedPerson,
@@ -146,6 +150,64 @@ export class HttpAdapter implements Adapter {
       method: "POST",
       body: JSON.stringify({ allRight }),
     });
+  }
+
+  // --- Date Studio -----------------------------------------------------
+
+  async getPlanLockIns(): Promise<PlanLockIn[]> {
+    return call<PlanLockIn[]>("/plans");
+  }
+
+  async getDatePreferences(lockInId: string): Promise<DatePreferences> {
+    return call<DatePreferences>(`/lockins/${lockInId}/date-preferences`);
+  }
+
+  async generateDatePlans(
+    lockInId: string,
+    preferences: Partial<DatePreferences> & { remember?: boolean },
+  ): Promise<DatePlan> {
+    try {
+      return await call<DatePlan>(`/lockins/${lockInId}/date-plans`, {
+        method: "POST",
+        body: JSON.stringify(preferences),
+      });
+    } catch (error) {
+      // 409 is "planning is not open on this connection" — released, closed
+      // for safety, or date suggestions turned off. The screen shows the
+      // server's reason rather than an error state, because the reason is the
+      // useful part.
+      if (error instanceof HttpError && error.status === 409) {
+        return { paths: [], note: error.message.split(": ").slice(1).join(": ") };
+      }
+      throw error;
+    }
+  }
+
+  async sendDateFeedback(
+    planId: string,
+    action: "saved" | "rejected" | "completed",
+    reasons: RejectionReason[] = [],
+  ): Promise<void> {
+    await call(`/date-plans/${planId}/feedback`, {
+      method: "POST",
+      body: JSON.stringify({ action, reasons }),
+    });
+  }
+
+  async getDateMemory(lockInId?: string): Promise<DateMemory[]> {
+    const query = lockInId ? `?lockInId=${encodeURIComponent(lockInId)}` : "";
+    return call<DateMemory[]>(`/date-memory${query}`);
+  }
+
+  async correctDateMemory(memoryId: string, value: string): Promise<void> {
+    await call(`/date-memory/${memoryId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ value }),
+    });
+  }
+
+  async forgetDateMemory(memoryId: string): Promise<void> {
+    await call(`/date-memory/${memoryId}`, { method: "DELETE" });
   }
 
   async getLockIns(): Promise<LockIn[]> {

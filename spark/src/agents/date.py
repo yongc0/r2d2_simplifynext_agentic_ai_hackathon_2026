@@ -45,7 +45,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.mcp.registry import MCPClient
+from src.agents.date_scoring import MIN_SCORE, explain, score_candidate
 from src.schemas.agents import DatePath, DatePlan, DateStop, DateSuggestion
+from src.schemas.date_studio import (
+    DateMemoryItem,
+    DatePlanFeedback,
+    DatePlanningPreferences,
+)
 from src.schemas.core import LockIn, TimeBucket, User
 from src.telemetry.trace import span
 
@@ -347,9 +353,239 @@ class DateAgent:
             parts.append(f"{stop.activity}{label}")
         return f"{', then '.join(parts)}. {path.rationale}"
 
+    # -----------------------------------------------------------------
+    # Date Studio
+    # -----------------------------------------------------------------
+
+    def studio_plan(
+        self,
+        lockin: LockIn,
+        user: User,
+        peer: User,
+        preferences: DatePlanningPreferences,
+        memory: list[DateMemoryItem],
+        feedback: list[DatePlanFeedback],
+        seen_leads: set[str] | None = None,
+        saved_shapes: set[str] | None = None,
+    ) -> DatePlan:
+        """Three plans, ranked against what was asked for and what is remembered.
+
+        The same agent as `plan()`, given more to work with. `plan()` stays for
+        the encounter-level endpoint and the simulation; this is what Date
+        Studio calls.
+
+        STILL DETERMINISTIC, AND STILL GROUNDED. Ranking on structured venue
+        attributes and stored preferences is arithmetic, not judgement. Nothing
+        here calls a model, and a path that cannot cite an interest both people
+        listed is not built — the scorer can change the ORDER of honest options
+        and can never manufacture one.
+
+        The three are labelled `easy`, `new` and `light`. Those are presentation
+        categories describing the PLANS, never claims about the people: nothing
+        in this method concludes that somebody is an easy-going person.
+        """
+        seen_leads = seen_leads or set()
+        saved_shapes = saved_shapes or set()
+
+        with span("agent.date.studio", lockin_id=lockin.id) as s:
+            # Hard filters first, in the order that fails cheapest.
+            if not (
+                user.consent_scope.allow_date_suggestions
+                and peer.consent_scope.allow_date_suggestions
+            ):
+                s.set_attribute("outcome", "declined by consent scope")
+                return DatePlan(
+                    lockin_id=lockin.id, paths=[],
+                    note="One of you has turned date suggestions off.",
+                )
+
+            shared_interests = sorted(
+                set(user.profile.interests) & set(peer.profile.interests)
+            )
+            if not shared_interests:
+                s.set_attribute("outcome", "no shared interests")
+                return DatePlan(
+                    lockin_id=lockin.id, paths=[],
+                    note=(
+                        "Nothing you have both mentioned to build on yet. "
+                        "Another call may give us something."
+                    ),
+                )
+
+            buckets = self._shared_buckets(user, peer)
+            if not buckets:
+                s.set_attribute("outcome", "no shared availability")
+                return DatePlan(
+                    lockin_id=lockin.id, paths=[],
+                    note="You are not usually free at the same times.",
+                )
+
+            # A requested time must be one they SHARE. The API validates it too;
+            # this is the agent refusing to plan for a time only one of them has.
+            wanted = preferences.time_bucket
+            if wanted and wanted in buckets:
+                buckets = [wanted]
+            elif wanted:
+                s.set_attribute("outcome", "requested bucket is not shared")
+                return DatePlan(
+                    lockin_id=lockin.id, paths=[],
+                    note="You are not both usually free then. Try another time.",
+                )
+
+            # Counts only. Never the memory VALUES: a span is written to a file
+            # and read in a demo, and somebody's preferences are not trace data.
+            s.set_attribute("preferences_applied", len(preferences.as_pairs()))
+            s.set_attribute("memory_items", len(memory))
+            s.set_attribute("feedback_items", len(feedback))
+
+            paths = self._ranked_paths(
+                lockin, shared_interests, buckets, preferences,
+                memory, feedback, seen_leads, saved_shapes, s,
+            )
+
+            note = ""
+            if not paths:
+                note = (
+                    "Nothing open that fits what you asked for. Try relaxing "
+                    "one of the boxes."
+                )
+            elif len(paths) < 3:
+                note = "Only what genuinely fits — we would rather offer fewer."
+            s.set_attribute("paths", len(paths))
+            return DatePlan(lockin_id=lockin.id, paths=paths, note=note)
+
+    # -----------------------------------------------------------------
+    def _shared_buckets(self, user: User, peer: User) -> list[str]:
+        shared = self.client.try_call(
+            "spark-calendar", "shared_availability",
+            default={"shared_buckets": []}, user_a=user.id, user_b=peer.id,
+        ) or {"shared_buckets": []}
+        return list(shared["shared_buckets"])
+
+    def _ranked_paths(
+        self, lockin, shared_interests, buckets, preferences,
+        memory, feedback, seen_leads, saved_shapes, s,
+    ) -> list[DatePath]:
+        """Score every eligible lead, then take the three best distinct shapes.
+
+        Shapes are assigned AFTER ranking, not searched for: the best-scoring
+        option is the easy one, the best novel option is the new one. Choosing a
+        shape first and then hunting for something to fill it is how a slot gets
+        filled with a weak option purely to make three.
+        """
+        for bucket in buckets:
+            leads = self._venues(shared_interests, bucket, "activity", limit=12)
+            tables = self._venues(shared_interests, bucket, "food", limit=4)
+            tables += self._venues(shared_interests, bucket, "drink", limit=4)
+            if not leads:
+                continue
+
+            scored = []
+            for lead in leads:
+                breakdown = score_candidate(
+                    venue=lead,
+                    shared_interests=shared_interests,
+                    preferences=preferences,
+                    memory=memory,
+                    feedback=feedback,
+                    seen_leads=seen_leads,
+                    saved_shapes=saved_shapes,
+                    shape="easy",
+                )
+                if not breakdown.shared_interests:
+                    # No common ground, no plan. The hard rule, applied after
+                    # scoring so it cannot be traded away by a high score.
+                    continue
+                if breakdown.total < MIN_SCORE:
+                    continue
+                scored.append((breakdown, lead))
+
+            if not scored:
+                continue
+
+            # Deterministic: score first, then venue id, so ties never depend on
+            # dictionary order.
+            scored.sort(key=lambda pair: (-pair[0].total, pair[1]["venue_id"]))
+            s.set_attribute("candidates", len(scored))
+            return self._shape_three(
+                lockin, bucket, scored, tables, preferences
+            )
+        return []
+
+    def _shape_three(self, lockin, bucket, scored, tables, preferences):
+        """The three shapes, from the ranked list.
+
+        easy  — the best fit overall.
+        new   — the best one whose lead differs from the easy pick, so "try
+                something else" is a genuinely different evening.
+        light — the cheapest and shortest of what is left.
+        """
+        chosen: list[tuple[str, object, dict]] = []
+        used_leads: set[str] = set()
+
+        if scored:
+            breakdown, lead = scored[0]
+            chosen.append(("easy", breakdown, lead))
+            used_leads.add(lead["venue_id"])
+
+        for breakdown, lead in scored:
+            if lead["venue_id"] in used_leads:
+                continue
+            chosen.append(("new", breakdown, lead))
+            used_leads.add(lead["venue_id"])
+            break
+
+        lightest = sorted(
+            (pair for pair in scored if pair[1]["venue_id"] not in used_leads),
+            key=lambda pair: (
+                _BUDGET_ORDER.index(pair[1].get("budget", "flexible")),
+                _DURATION_ORDER.index(pair[1].get("duration", "two_hours")),
+                pair[1]["venue_id"],
+            ),
+        )
+        if lightest:
+            breakdown, lead = lightest[0]
+            chosen.append(("light", breakdown, lead))
+            used_leads.add(lead["venue_id"])
+
+        paths: list[DatePath] = []
+        used_tables: set[str] = set()
+        for shape, breakdown, lead in chosen:
+            table = self._pick_table(lead, tables, used_tables)
+            if table is not None:
+                used_tables.add(table["venue_id"])
+            stops = [self._stop(lead)] + ([self._stop(table)] if table else [])
+
+            rationale = explain(breakdown, bucket)
+            if not rationale:
+                # No evidence, no plan. See `explain`.
+                continue
+
+            paths.append(
+                DatePath(
+                    path_id=f"{lockin.id}-{shape}-{lead['venue_id']}",
+                    lockin_id=lockin.id,
+                    headline=self._headline(stops),
+                    stops=stops,
+                    grounded_in=breakdown.shared_interests,
+                    rationale=rationale[:300],
+                    fit_score=max(0.0, min(1.0, breakdown.total / 4.0)),
+                    proposed_bucket=TimeBucket(bucket),
+                    shape=shape,
+                    budget_band=lead.get("budget", "flexible"),
+                    duration_band=lead.get("duration", "two_hours"),
+                )
+            )
+        return paths
+
 
 def _join(items: list[str]) -> str:
     """"a and b", or just "a". British spelling, per CLAUDE.md."""
     if len(items) <= 1:
         return items[0] if items else ""
     return " and ".join(items)
+
+
+#: Cheapest and shortest first, for the "keep it light" pick.
+_BUDGET_ORDER = ["free", "under_20", "under_50", "flexible"]
+_DURATION_ORDER = ["one_hour", "two_hours", "whole_evening"]

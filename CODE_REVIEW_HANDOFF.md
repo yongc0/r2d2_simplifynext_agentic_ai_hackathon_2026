@@ -11,8 +11,8 @@ done it says so in the same sentence.
 ## Verified today
 
 ```text
-backend    242 passed, 1 skipped, no warnings   (uv run pytest)
-frontend   175 passed,            no warnings   (npm test)
+backend    272 passed, 1 skipped, no warnings   (uv run pytest)
+frontend   200 passed,            no warnings   (npm test)
 build      clean                                (npm run build)
 whitespace clean                                (git diff --cached --check)
 ```
@@ -22,7 +22,7 @@ whitespace clean                                (git diff --cached --check)
 ## Complete
 
 **The experience, end to end.** onboarding → home → encounter → three-minute
-call → consent → reveal → lock-in → continuity brief → date plan. Every route is
+call → consent → reveal → lock-in → continuity brief → Date Studio. Every route is
 built; none renders a placeholder. Ten of ten client milestones.
 
 **Both adapters.** `MockAdapter` is the default and needs no backend or key —
@@ -89,6 +89,16 @@ asserts it claims no review, no team and no follow-up.
 
 **There is no auth.** One encounter per session, not per user. This alone rules
 out a multi-person test.
+
+**Date Studio memory is local SQLite, and that is all it is.** Preferences,
+plan snapshots and feedback persist across a restart and are cleared by a demo
+reset. Improvement is deterministic re-ranking over auditable rows — **it does
+not retrain a model**. AgentCore Memory is the intended replacement store and is
+**not integrated**; nothing here talks to it.
+
+**Date Studio Phase 2 is not built.** Collaborative proposals (one plan, two
+private responses, neither seeing the other's rejection) need two authenticated
+viewers. Booking, notifications, real venue names and maps are out of scope.
 
 **Bedrock has never been run.** No AWS credentials on this machine, so every
 graded number is Groq-derived or deterministic, and the report says so.

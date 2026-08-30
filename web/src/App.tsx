@@ -9,7 +9,9 @@ import { DirectorPanel, useDirectorHotkey } from "./components/DirectorPanel";
 import { useSpark } from "./store/useSpark";
 import Call from "./screens/Call";
 import Consent from "./screens/Consent";
+import DateStudio from "./screens/DateStudio";
 import Dates from "./screens/Dates";
+import Plans from "./screens/Plans";
 import Encounter from "./screens/Encounter";
 import EncounterWaiting from "./screens/EncounterWaiting";
 import Home from "./screens/Home";
@@ -30,6 +32,8 @@ import Reveal from "./screens/Reveal";
  *   /reveal             identity, only after a mutual yes
  *   /lockins            the five slots
  *   /dates              three evenings, once you have both said yes
+   *   /plans              Date Studio — pick a connection to plan with
+   *   /plans/:lockInId    the planner: constraints, options, memory
  */
 export default function App() {
   useDirectorHotkey();
@@ -56,6 +60,12 @@ export default function App() {
         <Route path="/lockins" element={<LockIns />} />
         {/* Post-reveal only. The screen guards itself on `store.revealed`
             and the backend refuses with 409 — see Dates.tsx. */}
+        {/* Date Studio (§13.6). Post-reveal only — the screens guard on the
+            store and the server refuses with 409 regardless. */}
+        <Route path="/plans" element={<Plans />} />
+        <Route path="/plans/:lockInId" element={<DateStudio />} />
+        {/* Kept as a compatibility route into the same feature. There is one
+            implementation; this is a way in, not a second one. */}
         <Route path="/dates" element={<Dates />} />
         {/* Unknown route lands on home rather than a 404 screen: there is no
             state in this product a stray URL should be able to invent. */}

@@ -204,6 +204,12 @@ export interface DatePath {
   pathId: string;
   /** Composed from the stops, never written by a model. */
   headline: string;
+  /** Which of the three offers this is. A category describing the PLAN — never
+   *  a claim about the people, who have not been sorted into easy-going and
+   *  adventurous by anything in this product. */
+  shape: PlanShape;
+  budgetBand: string;
+  durationBand: string;
   stops: DateStop[];
   /** Interests BOTH people listed. Never empty — the agent will not build a
    *  path it cannot ground, for the same reason the Communication Agent will
@@ -218,4 +224,71 @@ export interface DatePlan {
   /** Why the plan is short or empty, so it reads as a fact about the pair
    *  rather than as a failure. */
   note: string;
+}
+
+// ---------------------------------------------------------------------------
+// Date Studio
+// ---------------------------------------------------------------------------
+
+/** The three offers. Presentation categories, not personality types. */
+export type PlanShape = "easy" | "new" | "light";
+
+export type Mood = "easy" | "playful" | "adventurous" | "meaningful";
+export type Budget = "free" | "under_20" | "under_50" | "flexible";
+export type PlanDuration = "one_hour" | "two_hours" | "whole_evening";
+export type Energy = "low" | "medium" | "high";
+export type PlanFormat = "food" | "activity" | "outdoors" | "learning" | "event";
+
+/** Why a plan was not right. Chips, never a text box: a reason has to be
+ *  something the scorer can act on, and "meh" is not. */
+export type RejectionReason =
+  | "too_expensive"
+  | "too_long"
+  | "too_active"
+  | "too_quiet"
+  | "too_crowded"
+  | "wrong_time"
+  | "already_done"
+  | "not_our_style";
+
+/** What the pair want THIS time. Everything optional — an unset dimension means
+ *  "no opinion", not a default for the scorer to invent. */
+export interface DatePreferences {
+  mood?: Mood | null;
+  budget?: Budget | null;
+  duration?: PlanDuration | null;
+  energy?: Energy | null;
+  formats: PlanFormat[];
+  timeBucket?: string | null;
+  /** The times they GENUINELY share. Server-supplied: a time only one of them
+   *  is free is not a choice, it is a plan neither can attend. */
+  sharedBuckets: string[];
+  /** True when these came from memory. The form must SAY it prefilled rather
+   *  than presenting remembered values as though the person just chose them —
+   *  a preference nobody noticed being applied is one they cannot correct. */
+  prefilled: boolean;
+}
+
+/** One thing Spark remembers, as the memory panel shows it. */
+export interface DateMemory {
+  memoryId: string;
+  scope: "user" | "lockin";
+  lockInId?: string | null;
+  dimension: string;
+  value: string;
+  /** "explicit" or "feedback" — displayed, because a person should be able to
+   *  see the difference between what they told Spark and what it inferred. */
+  source: "explicit" | "feedback";
+  confidence: number;
+  updatedAt: string;
+}
+
+/** A connection you can plan with. */
+export interface PlanLockIn {
+  lockInId: string;
+  person: RevealedPerson;
+  state: LockInStatus;
+  /** Set only when planning is NOT available, so the hub can say why rather
+   *  than showing a dead button. */
+  unavailableReason?: string | null;
 }

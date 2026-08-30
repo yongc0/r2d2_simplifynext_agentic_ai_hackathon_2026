@@ -32,8 +32,13 @@ from src.api.schemas import (
     ConsentOut,
     ContinuityBriefOut,
     ConversationPromptOut,
+    DateFeedbackIn,
+    DateMemoryOut,
+    DateMemoryPatchIn,
     DatePathOut,
     DatePlanOut,
+    DatePreferencesIn,
+    DatePreferencesOut,
     DateStopOut,
     EncounterCardOut,
     ExtractIn,
@@ -42,12 +47,14 @@ from src.api.schemas import (
     ExtractionOut,
     HealthOut,
     LockInOut,
+    PlanLockInOut,
     RespondIn,
 )
 from src.agents.date import DateAgent
 from src.agents.guardian import GuardianAgent, IncidentLog
 from src.agents.onboarding import OnboardingAgent
 from src.api.session import (
+    UNKNOWN_LOCKIN,
     EncounterClosed,
     EncounterNotFound,
     GateNotPending,
@@ -59,6 +66,11 @@ from src.config import SETTINGS
 from src.mcp.services import WORLD
 from src.safety.consent import build_reveal, reveal_permitted
 from src.schemas.core import EncounterState, LockIn
+from src.schemas.date_studio import (
+    DatePlanFeedback,
+    DatePlanningPreferences,
+    DatePlanRecord,
+)
 
 router = APIRouter(prefix="/api")
 
@@ -265,6 +277,354 @@ def onboarding_extract(body: ExtractIn) -> ExtractionOut:
         languages=list(extraction.languages),
         unresolved=list(extraction.unresolved),
         follow_up=agent.follow_up_question(extraction),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Date Studio
+# ---------------------------------------------------------------------------
+#
+# THE VIEWER IS ALWAYS DERIVED, NEVER SUPPLIED. Every route below takes its
+# owner from the lock-in the server already holds. A client that could name the
+# owner of a memory item could read and rewrite somebody else's preferences,
+# and there is no auth here to stop it — so the id simply never crosses the
+# wire in that direction.
+
+
+def _planning_lockin(session: SparkSession, lockin_id: str):
+    """The lock-in, if planning is permitted on it. Raises otherwise.
+
+    404 for a lock-in that does not exist, 409 when it exists but planning is
+    not open — released, closed by Guardian, or date suggestions turned off.
+    One helper so every route refuses identically; the reasons live in
+    `SparkSession.planning_refusal`.
+    """
+    refusal = session.planning_refusal(lockin_id)
+    if refusal == UNKNOWN_LOCKIN:
+        raise HTTPException(status_code=404, detail=f"no lock-in {lockin_id}")
+    if refusal is not None:
+        raise HTTPException(status_code=409, detail=refusal)
+    return session.lockin(lockin_id)
+
+
+@router.get("/plans", response_model=list[PlanLockInOut], response_model_by_alias=True)
+def plan_hub() -> list[PlanLockInOut]:
+    """Connections you can plan with.
+
+    Only lock-ins, so only pairs who have already exchanged names. A connection
+    that cannot be planned with is still listed, with the reason — hiding it
+    would leave someone wondering where a person went.
+    """
+    session = get_session()
+    out: list[PlanLockInOut] = []
+    for lockin in session.lockins():
+        viewer_id = session.viewer_id(lockin)
+        other = session.user(lockin.other(viewer_id))
+        viewer = session.user(viewer_id)
+        shared = sorted(set(viewer.profile.interests) & set(other.profile.interests))
+        refusal = session.planning_refusal(lockin.id)
+        out.append(
+            PlanLockInOut(
+                lock_in_id=lockin.id,
+                person=mapping.reveal_out_from_user(other, shared),
+                state=lockin.state.value,
+                unavailable_reason=None if refusal is None else refusal,
+            )
+        )
+    return out
+
+
+@router.get(
+    "/lockins/{lockin_id}/date-preferences",
+    response_model=DatePreferencesOut,
+    response_model_by_alias=True,
+)
+def get_date_preferences(lockin_id: str) -> DatePreferencesOut:
+    """The remembered constraints, and the times they genuinely share.
+
+    `prefilled` is true when these came from memory. The form must SAY it
+    prefilled rather than presenting remembered values as though the person had
+    just chosen them — a preference someone did not notice being applied is one
+    they cannot correct.
+    """
+    session = get_session()
+    lockin = _planning_lockin(session, lockin_id)
+    viewer_id = session.viewer_id(lockin)
+
+    remembered = {
+        item.dimension: item.value
+        for item in session.date_memory.for_owner(viewer_id, lockin_id)
+    }
+    buckets = session.runtime.client.try_call(
+        "spark-calendar", "shared_availability",
+        default={"shared_buckets": []},
+        user_a=lockin.user_a, user_b=lockin.user_b,
+    ) or {"shared_buckets": []}
+
+    return DatePreferencesOut(
+        mood=remembered.get("mood"),
+        budget=remembered.get("budget"),
+        duration=remembered.get("duration"),
+        energy=remembered.get("energy"),
+        formats=[remembered["format"]] if "format" in remembered else [],
+        time_bucket=None,
+        shared_buckets=list(buckets["shared_buckets"]),
+        prefilled=bool(remembered),
+    )
+
+
+@router.put(
+    "/lockins/{lockin_id}/date-preferences",
+    response_model=DatePreferencesOut,
+    response_model_by_alias=True,
+)
+def put_date_preferences(
+    lockin_id: str, body: DatePreferencesIn
+) -> DatePreferencesOut:
+    """Store constraints the person asked to be remembered.
+
+    ONLY when `remember` is true. "I am tired tonight" is context, and a system
+    that promotes tonight's mood into a durable belief will be wrong about
+    someone forever without ever having been told anything untrue.
+
+    Idempotent: the store upserts one row per (owner, scope, dimension), so
+    saving twice updates rather than accumulating.
+    """
+    session = get_session()
+    lockin = _planning_lockin(session, lockin_id)
+    viewer_id = session.viewer_id(lockin)
+
+    if body.remember:
+        preferences = DatePlanningPreferences(
+            mood=body.mood, budget=body.budget, duration=body.duration,
+            energy=body.energy, formats=body.formats,
+        )
+        for dimension, value in preferences.as_pairs():
+            session.date_memory.remember(
+                owner_id=viewer_id, scope="user", dimension=dimension,
+                value=value, source="explicit",
+            )
+    return get_date_preferences(lockin_id)
+
+
+@router.post(
+    "/lockins/{lockin_id}/date-plans",
+    response_model=DatePlanOut,
+    response_model_by_alias=True,
+)
+def create_date_plans(lockin_id: str, body: DatePreferencesIn) -> DatePlanOut:
+    """Three plans, ranked from this request and what is remembered.
+
+    The request's time bucket is checked against the pair's SHARED availability
+    before it reaches the agent: a time only one of them is free is not a
+    constraint, it is a plan neither can attend.
+    """
+    session = get_session()
+    lockin = _planning_lockin(session, lockin_id)
+    viewer_id = session.viewer_id(lockin)
+    viewer = session.user(viewer_id)
+    peer = session.user(lockin.other(viewer_id))
+
+    if body.remember:
+        put_date_preferences(lockin_id, body)
+
+    preferences = DatePlanningPreferences(
+        mood=body.mood, budget=body.budget, duration=body.duration,
+        energy=body.energy, formats=body.formats, time_bucket=body.time_bucket,
+    )
+    memory = session.date_memory.for_owner(viewer_id, lockin_id)
+    feedback = session.date_memory.feedback_for(viewer_id, lockin_id)
+
+    seen_leads = set()
+    saved_shapes = set()
+    for entry in feedback:
+        record = session.date_memory.get_plan(entry.plan_id)
+        if record is None:
+            continue
+        if entry.action == "rejected":
+            seen_leads.add(record.lead_venue_id)
+        if entry.action in ("saved", "completed"):
+            saved_shapes.add(record.shape)
+
+    plan = DateAgent(client=session.runtime.client).studio_plan(
+        lockin, viewer, peer, preferences, memory, feedback,
+        seen_leads=seen_leads, saved_shapes=saved_shapes,
+    )
+
+    # Snapshot every plan shown, so later feedback can be validated against
+    # something that was actually offered rather than against a plan id a
+    # client made up.
+    now = datetime.now()
+    for path in plan.paths:
+        session.date_memory.record_plan(
+            DatePlanRecord(
+                plan_id=path.path_id, lockin_id=lockin.id, owner_id=viewer_id,
+                shape=path.shape, lead_venue_id=path.stops[0].venue_id,
+                budget_band=path.budget_band, duration_band=path.duration_band,
+                energy_band="medium",
+                formats=[], created_at=now,
+            )
+        )
+    return _plan_out(plan)
+
+
+@router.post("/date-plans/{plan_id}/feedback")
+def date_plan_feedback(plan_id: str, body: DateFeedbackIn) -> dict:
+    """What someone did with a plan.
+
+    Validated against a STORED plan belonging to this viewer and lock-in: a
+    client cannot submit feedback for something that was never offered, or for
+    somebody else's plan.
+
+    Idempotent. The store deactivates previous rows for the same (plan, owner)
+    before inserting, so a double-tap does not double-learn and changing your
+    mind leaves one active answer with the old one still readable.
+    """
+    session = get_session()
+    record = session.date_memory.get_plan(plan_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"no plan {plan_id}")
+
+    lockin = _planning_lockin(session, record.lockin_id)
+    viewer_id = session.viewer_id(lockin)
+    if record.owner_id != viewer_id:
+        # Not 403: saying "that is not yours" confirms it exists.
+        raise HTTPException(status_code=404, detail=f"no plan {plan_id}")
+
+    session.date_memory.record_feedback(
+        DatePlanFeedback(
+            feedback_id=f"fb:{plan_id}:{viewer_id}",
+            plan_id=plan_id, lockin_id=record.lockin_id, owner_id=viewer_id,
+            action=body.action, reasons=body.reasons, created_at=datetime.now(),
+        )
+    )
+
+    # A rejection with a reason is the one signal that becomes a belief, and
+    # only ever a lock-in scoped one: a reaction to one person is not a fact
+    # about somebody in general.
+    learned = 0
+    if body.action == "rejected":
+        for reason in body.reasons:
+            value = _REASON_LEARNS.get(reason)
+            if value is None:
+                continue
+            dimension, learn = value
+            session.date_memory.remember(
+                owner_id=viewer_id, scope="lockin", lockin_id=record.lockin_id,
+                dimension=dimension, value=learn, source="feedback",
+            )
+            learned += 1
+    return {"recorded": True, "learned": learned}
+
+
+#: A rejection reason -> the belief it argues for. Only reasons that name a
+#: DIMENSION appear: `not_our_style` and `already_done` are recorded but teach
+#: nothing, because neither says what was wrong and guessing would be inventing
+#: a preference from a shrug.
+_REASON_LEARNS: dict[str, tuple[str, str]] = {
+    "too_expensive": ("budget", "free"),
+    "too_long": ("duration", "one_hour"),
+    "too_active": ("energy", "low"),
+    "too_quiet": ("energy", "high"),
+    "too_crowded": ("format", "outdoors"),
+}
+
+
+@router.get(
+    "/date-memory", response_model=list[DateMemoryOut], response_model_by_alias=True
+)
+def date_memory(lockInId: str | None = None) -> list[DateMemoryOut]:
+    """What Spark remembers about this viewer.
+
+    Scoped to the viewer by the server. Another person's memory is not
+    addressable from here, because the owner is never taken from the request.
+    """
+    session = get_session()
+    lockins = session.lockins()
+    if not lockins:
+        return []
+    viewer_id = session.viewer_id(lockins[0])
+    return [
+        DateMemoryOut(
+            memory_id=item.memory_id, scope=item.scope, lockin_id=item.lockin_id,
+            dimension=item.dimension, value=item.value, source=item.source,
+            confidence=round(item.confidence, 2),
+            updated_at=item.updated_at.isoformat(),
+        )
+        for item in session.date_memory.for_owner(viewer_id, lockInId)
+    ]
+
+
+@router.patch(
+    "/date-memory/{memory_id}",
+    response_model=DateMemoryOut,
+    response_model_by_alias=True,
+)
+def correct_date_memory(memory_id: str, body: DateMemoryPatchIn) -> DateMemoryOut:
+    """The person fixing what Spark believes.
+
+    A correction is explicit by definition and takes explicit confidence: having
+    been told, Spark should stop weighing what it had inferred.
+    """
+    session = get_session()
+    lockins = session.lockins()
+    if not lockins:
+        raise HTTPException(status_code=404, detail=f"no memory {memory_id}")
+    viewer_id = session.viewer_id(lockins[0])
+
+    item = session.date_memory.correct(memory_id, viewer_id, body.value)
+    if item is None:
+        raise HTTPException(status_code=404, detail=f"no memory {memory_id}")
+    return DateMemoryOut(
+        memory_id=item.memory_id, scope=item.scope, lockin_id=item.lockin_id,
+        dimension=item.dimension, value=item.value, source=item.source,
+        confidence=round(item.confidence, 2),
+        updated_at=item.updated_at.isoformat(),
+    )
+
+
+@router.delete("/date-memory/{memory_id}")
+def forget_date_memory(memory_id: str) -> dict:
+    """Delete a remembered preference.
+
+    Soft delete, so the audit trail stays readable — but nothing inactive is
+    ever scored, so as far as planning is concerned it is gone immediately.
+    """
+    session = get_session()
+    lockins = session.lockins()
+    if not lockins:
+        raise HTTPException(status_code=404, detail=f"no memory {memory_id}")
+    viewer_id = session.viewer_id(lockins[0])
+    if not session.date_memory.forget(memory_id, viewer_id):
+        raise HTTPException(status_code=404, detail=f"no memory {memory_id}")
+    return {"deleted": True}
+
+
+def _plan_out(plan) -> DatePlanOut:
+    """One mapping from agent plan to wire, shared by both date endpoints."""
+    return DatePlanOut(
+        paths=[
+            DatePathOut(
+                path_id=path.path_id,
+                headline=path.headline,
+                stops=[
+                    DateStopOut(
+                        venue_id=stop.venue_id, activity=stop.activity,
+                        category=stop.category,
+                        is_commercial_partner=stop.is_commercial_partner,
+                    )
+                    for stop in path.stops
+                ],
+                grounded_in=list(path.grounded_in),
+                rationale=path.rationale,
+                proposed_bucket=path.proposed_bucket.value,
+                shape=path.shape,
+                budget_band=path.budget_band,
+                duration_band=path.duration_band,
+            )
+            for path in plan.paths
+        ],
+        note=plan.note,
     )
 
 
