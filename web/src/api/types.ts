@@ -292,3 +292,19 @@ export interface PlanLockIn {
    *  than showing a dead button. */
   unavailableReason?: string | null;
 }
+
+/**
+ * A persona an operator can follow, for a demo (§8).
+ *
+ * DEMO ONLY. Not a user list, not reachable from any product screen, and it
+ * carries nothing the matcher does not already use — no identity, no location.
+ * It exists because there is no auth, so "who is this browser" is otherwise a
+ * server restart away from being changeable.
+ */
+export interface DemoPersona {
+  userId: string;
+  handle: string;
+  intents: string[];
+  interests: string[];
+  availability: string[];
+}

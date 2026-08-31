@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { getAdapter } from "../api/adapter";
 import { Avatar } from "../components/Avatar";
 import type { ContinuityBrief, LockIn } from "../api/types";
+import { NAV_HEIGHT_CLASS } from "../components/AppNav";
 import { useSpark } from "../store/useSpark";
 
 /**
@@ -66,7 +67,7 @@ export default function LockIns() {
   const empty = Math.max(0, SLOTS - active.length);
 
   return (
-    <div className="flex h-full flex-col px-6 pt-16 pb-10">
+    <div className={`flex h-full flex-col px-6 pt-16 ${NAV_HEIGHT_CLASS}`}>
       <header className="mb-6 flex items-baseline justify-between">
         <h1 className="text-2xl font-medium tracking-tight text-text">
           Lock-ins

@@ -114,6 +114,9 @@ There is no second implementation of the flow.
 | `POST /api/demo/advance-days` | Move the simulated clock — week 1 to week 5 inside a five-minute take |
 | `POST /api/encounters/{id}/guardian/check-in` | Record the private check-in answer |
 | `GET /api/events` | Director panel feed, Server-Sent Events from real OTEL spans |
+| `GET /api/demo/personas` | Six people the demo can follow, with intents and interests |
+| `POST /api/demo/act-as?user_id=` | Follow that persona's day. Drops the current encounter |
+| `POST /api/demo/new-encounter` | Another encounter — implemented as "let it be tomorrow". Keeps lock-ins and Date Studio memory |
 | `POST /api/demo/reset` | Deterministic reset (§8 of FRONTEND.md) |
 | `POST /api/demo/force-outcome` | Force the other party's answer, to film each branch |
 

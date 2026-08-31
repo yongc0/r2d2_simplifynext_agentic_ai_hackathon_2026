@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { getAdapter } from "../api/adapter";
+import { NAV_HEIGHT_CLASS } from "../components/AppNav";
 import { DateMemoryPanel } from "../components/DateMemoryPanel";
 import { DatePlanCard } from "../components/DatePlanCard";
 import type {
@@ -158,7 +159,7 @@ export default function DateStudio() {
   }
 
   return (
-    <div className="flex h-full flex-col px-6 pt-16 pb-10">
+    <div className={`flex h-full flex-col px-6 pt-16 ${NAV_HEIGHT_CLASS}`}>
       <header className="mb-4">
         <button
           type="button"

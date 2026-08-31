@@ -172,6 +172,20 @@ Ends with a mode selection: **Potential Partner** (long-term / short-term) or **
 
 **Never render a height field, an appearance filter, or a photo upload.** These are deliberately excluded from the product.
 
+### 5.1a `/profile` — what you told Spark
+
+Onboarding is a conversation you have once; this is the same information as a
+surface you can return to. A profile you can only set by re-running an intake
+chat is a profile nobody corrects.
+
+The rules from §5.1 still apply: intent is chosen from three options in a fixed
+order with nothing preselected, and there is no height, appearance or photo
+field — the interest vocabulary is the fixed list from `extract.ts`, so there is
+nothing to type into either.
+
+With no auth there is nobody to save a profile to, and the screen says so
+rather than implying a durable account.
+
 ### 5.2 `/home` — the waiting state
 
 Deliberately, almost aggressively empty. One line of copy and a countdown to the evening encounter window.
@@ -179,7 +193,36 @@ Deliberately, almost aggressively empty. One line of copy and a countdown to the
 > Your encounter window opens at 9:00pm.
 > `04:12:38`
 
-Below: the lock-in list (§5.7) if any exist. Nothing else. No feed, no browse, no profiles, no activity. The emptiness is the product argument — there is nothing here to scroll.
+Below: the lock-in list (§5.7) if any exist, and — only while it is missing — a
+prompt to set up a profile, because that is the one thing that genuinely stops
+the product working.
+
+Nothing else. No feed, no browse, no activity. The emptiness is the product
+argument — there is nothing here to scroll.
+
+> **AMENDED DURING THE BUILD.** This section originally read "no profiles". That
+> rule is about not BROWSING OTHER PEOPLE, and it stands: there is no discovery,
+> no feed, and no list of strangers anywhere in the app. Reaching your OWN
+> profile, lock-ins and plans is a different thing, and an app whose features
+> cannot be reached cannot be demonstrated. See §5.9.
+
+### 5.9 Navigation
+
+Four destinations, in a bar at the bottom: **Home, Plans, Lock-ins, You.** There
+is deliberately no fifth, and there will not be one that lists people you have
+not met — `navigation.test.tsx` asserts the count and the absence.
+
+**The bar is hidden on `/onboarding`, `/encounter*`, `/call*` and `/reveal`,**
+and both reasons are product reasons rather than layout ones:
+
+- Three minutes only works because there is nowhere else to be. A nav bar during
+  a call is an escape hatch.
+- The consent gate is two buttons and a genuinely uncertain wait. A third exit
+  turns a decision into something you can wander away from — and the other
+  person is waiting on it.
+
+`HIDDEN_ON` is a list of route PREFIXES, so a nested route added later under
+`/call` inherits the rule rather than quietly escaping it.
 
 ### 5.3 `/encounter` — the notification
 
@@ -290,6 +333,14 @@ Six weeks of continuity has to fit inside five minutes.
 
 A dev-only control strip (hidden behind `?demo=1`):
 
+- **Be someone else** — a persona picker, so a presenter can show two different
+  people without restarting the server. `VITE_API=http` only: MockAdapter has
+  one scripted pair, so the picker hides rather than offering a single option
+  that changes nothing.
+- **New encounter** — another one, now. Implemented as "let it be tomorrow",
+  because one encounter per person per day IS the product and the id derives
+  from the day. Keeps lock-ins and Date Studio memory, so the recommender can be
+  shown improving across encounters; `Reset` is what clears those.
 - **Skip to encounter window** — bypass the countdown
 - **Advance one day / one week** — drives the Continuity Agent forward
 - **Force outcome** — both-yes / one-no / no-show, for filming each branch
@@ -346,7 +397,7 @@ Add a test in `web/src/__tests__/invariants.test.tsx` asserting that pre-reveal 
 placeholder. `/home` was never in the list above — a gap in this build order —
 and shipped with milestone 6, since §5.2 puts the lock-in list on it.
 
-Tests: **200 passing, no warnings.** All seven §9 invariants have a screen-level
+Tests: **220 passing, no warnings.** All seven §9 invariants have a screen-level
 test, indexed and asserted in `invariants.test.tsx` so deleting one to make a
 feature pass fails loudly. The fixtures `MockAdapter` shares with the Python
 agents — the onboarding keyword lists and the call transcript — are held in step

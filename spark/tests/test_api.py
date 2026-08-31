@@ -938,3 +938,117 @@ def test_nothing_about_guardian_reaches_the_other_party(client: TestClient) -> N
     plain = open_encounter(other)
     respond(other, plain, True)
     assert consent(other, plain, False).json() == closed_body
+
+
+# ---------------------------------------------------------------------------
+# Demo controls: being someone, and getting another encounter
+# ---------------------------------------------------------------------------
+#
+# There is no auth, so "which persona is this browser following" is a
+# presenter's setting rather than a user's identity. These routes exist because
+# the alternative is restarting the server between takes.
+
+
+def test_every_persona_offered_can_be_opened(client: TestClient) -> None:
+    """Each one either opens an encounter or reports an honest quiet day.
+
+    The picker filters on the deterministic shortlist, which is cheap and makes
+    no model call. The encounter then runs `select()`, which can still reject
+    everyone — so 409 stays possible and is a true outcome, not a bug. What
+    must never happen is a 500, and at least one persona must actually work or
+    the picker is useless.
+    """
+    personas = client.get("/api/demo/personas").json()
+    assert personas, "no persona had an eligible candidate today"
+
+    session = get_session()
+    opened = 0
+    for persona in personas:
+        session.act_as(persona["user_id"])
+        status = client.post("/api/encounters").status_code
+        assert status in (200, 409), f"{persona['user_id']} returned {status}"
+        opened += status == 200
+    assert opened, "every persona in the picker led to a quiet day"
+
+
+def test_personas_carry_nothing_identifying(client: TestClient) -> None:
+    """Only what the matcher already uses. No name, no place, no contact."""
+    import json
+
+    # Checked as KEYS, not substrings: "lat" is inside "slate-heron", and a
+    # scan that cannot tell a field from a word in a handle will either miss a
+    # real leak or cry wolf until somebody switches it off.
+    allowed = {"user_id", "handle", "intents", "interests", "availability"}
+    for persona in client.get("/api/demo/personas").json():
+        assert set(persona) == allowed, f"unexpected field: {set(persona) - allowed}"
+
+
+def test_acting_as_someone_else_changes_whose_day_it_is(
+    client: TestClient,
+) -> None:
+    personas = client.get("/api/demo/personas").json()
+    first = open_encounter(client)
+
+    other = next(p for p in personas if p["user_id"] not in first)
+    assert client.post(
+        f"/api/demo/act-as?user_id={other['user_id']}"
+    ).status_code == 200
+
+    second = open_encounter(client)
+    assert second != first
+
+
+def test_acting_as_drops_the_previous_encounter_rather_than_moving_it(
+    client: TestClient,
+) -> None:
+    """An encounter belongs to the pair it was opened for.
+
+    Quietly re-pointing one at a different person is how a demo ends up showing
+    something the system never did.
+    """
+    personas = client.get("/api/demo/personas").json()
+    first = open_encounter(client)
+    client.post(f"/api/demo/act-as?user_id={personas[-1]['user_id']}")
+
+    assert get_session().current_encounter_id() != first
+
+
+def test_an_unknown_persona_is_refused(client: TestClient) -> None:
+    response = client.post("/api/demo/act-as?user_id=u-not-real")
+    assert response.status_code == 404
+    assert "personas" in response.json()["detail"]
+
+
+def test_a_new_encounter_is_another_day(client: TestClient) -> None:
+    """One encounter per person per day IS the product, and the id derives from
+    the day — so "give me another" is the same thing as "let it be tomorrow"."""
+    first = open_encounter(client)
+    before = get_session().clock.current
+
+    client.post("/api/demo/new-encounter")
+    assert get_session().clock.current > before
+
+    second = open_encounter(client)
+    assert second != first
+
+
+def test_a_new_encounter_keeps_what_was_learned(client: TestClient) -> None:
+    """Unlike a reset. A presenter should be able to show the recommender
+    improving ACROSS encounters, which needs the memory to survive."""
+    lockin_id = None
+    eid = open_encounter(client)
+    respond(client, eid, True)
+    consent(client, eid, True)
+    lockins = client.get("/api/lockins").json()
+    assert lockins
+    lockin_id = lockins[0]["lockInId"]
+
+    client.post(
+        f"/api/lockins/{lockin_id}/date-plans",
+        json={"budget": "free", "remember": True},
+    )
+    assert client.get("/api/date-memory").json()
+
+    client.post("/api/demo/new-encounter")
+    assert client.get("/api/date-memory").json(), "a new encounter wiped the memory"
+    assert client.get("/api/lockins").json(), "a new encounter dropped the lock-in"

@@ -23,6 +23,7 @@ import type {
   ConsentOutcome,
   ContinuityBrief,
   DateMemory,
+  DemoPersona,
   DatePlan,
   DatePreferences,
   EncounterCard,
@@ -259,6 +260,37 @@ export class HttpAdapter implements Adapter {
   }
 
   // --- demo controls (§8) --------------------------------------------
+
+  async getDemoPersonas(): Promise<DemoPersona[]> {
+    // The server returns snake_case here because it is a demo route rather
+    // than a product model; mapped once, so no component sees the difference.
+    const rows = await call<
+      {
+        user_id: string;
+        handle: string;
+        intents: string[];
+        interests: string[];
+        availability: string[];
+      }[]
+    >("/demo/personas");
+    return rows.map((row) => ({
+      userId: row.user_id,
+      handle: row.handle,
+      intents: row.intents,
+      interests: row.interests,
+      availability: row.availability,
+    }));
+  }
+
+  async actAsPersona(userId: string): Promise<void> {
+    await call(`/demo/act-as?user_id=${encodeURIComponent(userId)}`, {
+      method: "POST",
+    });
+  }
+
+  async newEncounter(): Promise<void> {
+    await call("/demo/new-encounter", { method: "POST" });
+  }
 
   async reset(seed: number): Promise<void> {
     // Awaited, and failures propagate. This used to be fire-and-forget with a

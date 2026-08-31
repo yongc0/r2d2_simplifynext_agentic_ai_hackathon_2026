@@ -1059,6 +1059,43 @@ class ForceOutcomeIn(BaseModel):
     outcome: Literal["mutual", "declined", "no_response"]
 
 
+@router.get("/demo/personas")
+def demo_personas() -> list[dict]:
+    """People an operator can be, for a demo.
+
+    DEMO ONLY, and worth being precise about why it is not a privacy hole:
+    there is no auth, so "which synthetic persona is this browser following" is
+    a presenter's setting rather than a user's identity. Nothing here is
+    reachable from the product's own screens, and it exposes only what the
+    matcher already uses — never an identity, never a location.
+    """
+    return get_session().demo_personas()
+
+
+@router.post("/demo/act-as")
+def demo_act_as(user_id: str) -> dict:
+    """Follow this persona's day. Drops the current encounter."""
+    session = get_session()
+    session.act_as(user_id)
+    return {"actingAs": user_id}
+
+
+@router.post("/demo/new-encounter")
+def demo_new_encounter() -> dict:
+    """Another encounter, now.
+
+    Implemented as "let it be tomorrow", because one encounter per person per
+    day IS the product and the id derives from the day. Minting a second
+    encounter for a single day would be a demo control showing something the
+    system does not do.
+
+    Keeps lock-ins and Date Studio memory; `/demo/reset` clears those.
+    """
+    session = get_session()
+    session.new_encounter_tomorrow()
+    return {"day": session.clock.current.isoformat()}
+
+
 @router.post("/demo/force-outcome")
 def demo_force_outcome(body: ForceOutcomeIn) -> dict:
     session = get_session()

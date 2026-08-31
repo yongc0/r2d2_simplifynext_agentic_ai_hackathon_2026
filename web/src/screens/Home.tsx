@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { getAdapter } from "../api/adapter";
 import { Avatar } from "../components/Avatar";
+import { NAV_HEIGHT_CLASS } from "../components/AppNav";
 import { useSpark } from "../store/useSpark";
 
 /**
@@ -68,6 +69,9 @@ export default function Home() {
   const lockIns = useSpark((s) => s.lockIns);
   const setLockIns = useSpark((s) => s.setLockIns);
   const forcedOpen = useSpark((s) => s.windowOpen);
+  // An empty profile is the one thing that genuinely blocks the product from
+  // working, so it is the one thing home will interrupt itself to mention.
+  const chips = useSpark((s) => s.chips);
 
   const [status, setStatus] = useState<WindowStatus>(() => windowStatus());
 
@@ -104,7 +108,7 @@ export default function Home() {
   const active = lockIns.filter((l) => l.state !== "released");
 
   return (
-    <div className="flex h-full flex-col px-8 pt-24 pb-10">
+    <div className={`flex h-full flex-col px-8 pt-20 ${NAV_HEIGHT_CLASS}`}>
       <div className="flex flex-col gap-3">
         <h1 className="text-[1.6rem] leading-snug font-medium tracking-tight text-text">
           {open
@@ -140,6 +144,22 @@ export default function Home() {
           className="mt-8 w-full rounded-pill bg-accent px-6 py-4 text-base font-medium text-text transition-opacity hover:opacity-90"
         >
           Open tonight's encounter
+        </button>
+      ) : null}
+
+      {/* Set-up, but only while it is missing. Home is calm because there is
+          nothing to scroll — not because it refuses to tell you the product
+          cannot match you yet. */}
+      {chips.length === 0 ? (
+        <button
+          type="button"
+          onClick={() => navigate("/profile")}
+          className="mt-8 w-full rounded-card bg-surface px-4 py-4 text-left ring-1 ring-white/[0.06] ring-inset transition-colors hover:bg-white/[0.07]"
+        >
+          <span className="block text-sm text-text">Set up your profile</span>
+          <span className="mt-1 block text-xs leading-relaxed text-muted">
+            Spark needs to know what you are here for before it can find anyone.
+          </span>
         </button>
       ) : null}
 

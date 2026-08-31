@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { getAdapter } from "./api/adapter";
 import { CloseOut } from "./components/CloseOut";
 import { DemoControls, demoModeRequested } from "./components/DemoControls";
+import { AppNav } from "./components/AppNav";
 import { DeviceFrame } from "./components/DeviceFrame";
 import { DirectorPanel, useDirectorHotkey } from "./components/DirectorPanel";
 import { useSpark } from "./store/useSpark";
@@ -12,6 +13,7 @@ import Consent from "./screens/Consent";
 import DateStudio from "./screens/DateStudio";
 import Dates from "./screens/Dates";
 import Plans from "./screens/Plans";
+import Profile from "./screens/Profile";
 import Encounter from "./screens/Encounter";
 import EncounterWaiting from "./screens/EncounterWaiting";
 import Home from "./screens/Home";
@@ -31,6 +33,7 @@ import Reveal from "./screens/Reveal";
  *   /call/consent       the decision
  *   /reveal             identity, only after a mutual yes
  *   /lockins            the five slots
+ *   /profile            what you told Spark, and how to change it
  *   /dates              three evenings, once you have both said yes
    *   /plans              Date Studio — pick a connection to plan with
    *   /plans/:lockInId    the planner: constraints, options, memory
@@ -58,6 +61,7 @@ export default function App() {
         <Route path="/call/consent" element={<Consent />} />
         <Route path="/reveal" element={<Reveal />} />
         <Route path="/lockins" element={<LockIns />} />
+        <Route path="/profile" element={<Profile />} />
         {/* Post-reveal only. The screen guards itself on `store.revealed`
             and the backend refuses with 409 — see Dates.tsx. */}
         {/* Date Studio (§13.6). Post-reveal only — the screens guard on the
@@ -71,6 +75,10 @@ export default function App() {
             state in this product a stray URL should be able to invent. */}
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
+      {/* Absent during the call, the gate, the reveal and an offered
+          encounter — see AppNav. The format only works because there is
+          nowhere else to be. */}
+      <AppNav />
     </DeviceFrame>
     {/* Outside the frame, so it is never mistaken for part of the product. */}
     {demo ? <DemoControls /> : null}

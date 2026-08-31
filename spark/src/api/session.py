@@ -178,6 +178,13 @@ class SparkSession:
     #: encounter belonging to somebody else — which the client would then show
     #: as its own.
     _current_eid: str | None = field(default=None, init=False)
+    #: Whose day the demo is following, when an operator has chosen (§8).
+    #:
+    #: `None` means "find someone whose day goes somewhere", which is the right
+    #: default and a poor demo control: you get whoever the search lands on.
+    #: Setting this is how a presenter shows two different people without
+    #: resetting the world between them.
+    preferred_starter: str | None = field(default=None, init=False)
     #: lock-in id -> the LockIn, for this run.
     #:
     #: `/api/lockins` and `/api/briefs` returned `[]` for the whole build because
@@ -259,7 +266,11 @@ class SparkSession:
         is a normal outcome and not an error.
         """
         with self._lock:
-            starter = user_id or self._first_user_with_a_candidate()
+            starter = (
+                user_id
+                or self.preferred_starter
+                or self._first_user_with_a_candidate()
+            )
             day = self.clock.current
             eid = encounter_id(day.isoformat(), starter, "api")
 
@@ -460,6 +471,88 @@ class SparkSession:
                 return "One of you has turned date suggestions off."
         return None
 
+    def demo_personas(self, limit: int = 6) -> list[dict]:
+        """People an operator can choose to be, with enough to tell them apart.
+
+        Filtered by the deterministic SHORTLIST, which is cheap and makes no
+        model call. That is a strong indicator, not a guarantee: the encounter
+        itself runs `select()`, which can still reject everyone, so a quiet day
+        remains possible. It is a true outcome and the client shows it as one —
+        this filter just stops most of the wasted clicks in a recording.
+
+        DEMO ONLY. This is not a user list and there is no route that exposes
+        one to a user — it exists because there is no auth, and switching who
+        the demo is following is otherwise a server restart.
+        """
+        out: list[dict] = []
+        day = self.clock.current
+        with mark_internal():
+            for user_id in sorted(WORLD.users):
+                if len(out) >= limit:
+                    break
+                user = WORLD.users[user_id]
+                pool = self.runtime.client.try_call(
+                    "spark-overlap", "overlap_pool", default={"candidates": []},
+                    user_id=user_id, day=day.isoformat(),
+                ) or {"candidates": []}
+                candidates = [
+                    WORLD.users[c["candidate_id"]]
+                    for c in pool["candidates"]
+                    if c["candidate_id"] in WORLD.users
+                ]
+                if not candidates:
+                    continue
+                shortlisted, _ = self.runtime.match.shortlist(
+                    user, candidates, day, set(), self.runtime.encounter_counts,
+                )
+                if not shortlisted:
+                    continue
+                out.append(
+                    {
+                        "user_id": user_id,
+                        "handle": user.handle,
+                        "intents": [i.value for i in user.profile.intents],
+                        "interests": list(user.profile.interests)[:4],
+                        "availability": [
+                            b.value for b in user.profile.availability_window
+                        ],
+                    }
+                )
+        return out
+
+    def act_as(self, user_id: str) -> None:
+        """Follow this person's day from now on.
+
+        Drops the current encounter rather than reassigning it: an encounter
+        belongs to the pair it was opened for, and quietly re-pointing one at a
+        different person is exactly the kind of thing that would make a demo
+        show something the system never did.
+        """
+        if user_id not in WORLD.users:
+            raise EncounterNotFound(
+                f"no persona {user_id!r} in this world. GET /api/demo/personas "
+                "lists the ones whose day goes somewhere today."
+            )
+        with self._lock:
+            self.preferred_starter = user_id
+            self._current_eid = None
+            write_session_state(SETTINGS.checkpoint_db, "current_eid", "")
+
+    def new_encounter_tomorrow(self) -> None:
+        """Make another encounter available, without wiping the run.
+
+        ONE ENCOUNTER PER PERSON PER DAY is the product, and the encounter id is
+        derived from the day — so "give me another" is the same thing as "let it
+        be tomorrow". Advancing the clock is therefore the honest implementation
+        rather than a special case that mints a second encounter for one day.
+
+        Keeps lock-ins and Date Studio memory. Use `/demo/reset` to clear those.
+        """
+        self.advance_days(1)
+        with self._lock:
+            self._current_eid = None
+            write_session_state(SETTINGS.checkpoint_db, "current_eid", "")
+
     def advance_days(self, days: int) -> int:
         """Move the simulated clock forward, for §8's demo controls.
 
@@ -536,6 +629,7 @@ class SparkSession:
             # Recorded takes must be deterministic.
             DateMemoryStore(SETTINGS.checkpoint_db).clear()
             self.day_offset_extra = 0
+            self.preferred_starter = None
             self.forced_peer_answer = None
 
             db = SETTINGS.checkpoint_db

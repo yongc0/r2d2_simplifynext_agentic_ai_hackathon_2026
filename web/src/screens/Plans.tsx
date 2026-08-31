@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { getAdapter } from "../api/adapter";
 import { Avatar } from "../components/Avatar";
 import { DateMemoryPanel } from "../components/DateMemoryPanel";
+import { NAV_HEIGHT_CLASS } from "../components/AppNav";
 import type { DateMemory, PlanLockIn } from "../api/types";
 
 /**
@@ -51,7 +52,7 @@ export default function Plans() {
   }, []);
 
   return (
-    <div className="flex h-full flex-col px-6 pt-16 pb-10">
+    <div className={`flex h-full flex-col px-6 pt-16 ${NAV_HEIGHT_CLASS}`}>
       <header className="mb-5">
         <h1 className="text-2xl font-medium tracking-tight text-text">Plans</h1>
         <p className="mt-1.5 text-sm leading-relaxed text-muted">

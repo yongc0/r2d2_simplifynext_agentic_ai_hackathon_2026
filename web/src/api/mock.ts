@@ -28,6 +28,7 @@ import type {
   ConsentOutcome,
   ContinuityBrief,
   DateMemory,
+  DemoPersona,
   DatePath,
   DatePlan,
   DatePreferences,
@@ -690,6 +691,36 @@ export class MockAdapter implements Adapter {
   }
 
   // --- demo controls -------------------------------------------------
+
+  /**
+   * No personas offline.
+   *
+   * The mock has one scripted pair, so a picker would offer a single option
+   * that changes nothing. Returning an empty list makes the strip hide it —
+   * better than a control that looks like it does something. Persona switching
+   * needs a world, so it needs `VITE_API=http`.
+   */
+  async getDemoPersonas(): Promise<DemoPersona[]> {
+    return [];
+  }
+
+  async actAsPersona(_userId: string): Promise<void> {
+    // Nothing to switch to. See `getDemoPersonas`.
+  }
+
+  /**
+   * Run the encounter again, keeping what was learned.
+   *
+   * Deliberately NOT a reset: lock-ins and Date Studio memory survive, so a
+   * presenter can show the recommender improving across encounters rather than
+   * starting from nothing every time.
+   */
+  async newEncounter(): Promise<void> {
+    this.timers.forEach(clearTimeout);
+    this.timers = [];
+    this.forced = null;
+    this.revealed = false;
+  }
 
   // Async to match the interface, though the work here is synchronous. The
   // caller must not have to know which adapter it is holding.

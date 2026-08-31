@@ -39,7 +39,7 @@ filmed against.
 
 ```bash
 cd spark && uv run pytest    # 272 passed, 1 skipped
-cd web   && npm test         # 200 passed
+cd web   && npm test         # 220 passed
 ```
 
 ---

@@ -18,6 +18,7 @@ import type {
   ConsentOutcome,
   ContinuityBrief,
   DateMemory,
+  DemoPersona,
   DatePlan,
   DatePreferences,
   EncounterCard,
@@ -160,6 +161,17 @@ export interface Adapter {
   // server — and the recording would show the previous take's state with no
   // indication that anything had gone wrong. An awaitable control is the
   // difference between "reset" and "reset, probably".
+
+  /** Personas the demo can follow. Empty when the adapter has no world to
+   *  choose from — the strip then hides the picker rather than showing one
+   *  option that does nothing. */
+  getDemoPersonas(): Promise<DemoPersona[]>;
+
+  /** Follow this persona's day. Drops the current encounter. */
+  actAsPersona(userId: string): Promise<void>;
+
+  /** Another encounter, without wiping lock-ins or Date Studio memory. */
+  newEncounter(): Promise<void>;
 
   /** Deterministic reset — same seed, same take. */
   reset(seed: number): Promise<void>;

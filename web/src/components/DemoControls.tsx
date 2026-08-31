@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getAdapter } from "../api/adapter";
-import type { ConsentOutcome } from "../api/types";
+import type { ConsentOutcome, DemoPersona } from "../api/types";
 import { useSpark } from "../store/useSpark";
 
 /**
@@ -34,6 +34,17 @@ export function DemoControls() {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Empty on MockAdapter, which has one scripted pair — the picker then hides
+  // rather than offering a single option that changes nothing.
+  const [personas, setPersonas] = useState<DemoPersona[]>([]);
+  const [actingAs, setActingAs] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAdapter()
+      .getDemoPersonas()
+      .then(setPersonas)
+      .catch(() => setPersonas([]));
+  }, []);
 
   /** Run one control, surfacing whatever it throws. */
   const run = async (label: string, action: () => Promise<void>) => {
@@ -77,6 +88,22 @@ export function DemoControls() {
             }
           >
             Skip to encounter window
+          </Button>
+
+          <Button
+            busy={busy}
+            onClick={() =>
+              run("new encounter", async () => {
+                // Keeps lock-ins and Date Studio memory, so a presenter can
+                // show the recommender improving across encounters rather than
+                // starting from nothing each time.
+                await getAdapter().newEncounter();
+                reset(seed);
+                navigate("/encounter");
+              })
+            }
+          >
+            New encounter
           </Button>
 
           <Button
@@ -146,6 +173,37 @@ export function DemoControls() {
             Reset (seed {seed})
           </Button>
         </div>
+
+        {personas.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
+            <span className="mr-1 tracking-[0.18em] text-muted uppercase">
+              be
+            </span>
+            {personas.map((persona) => (
+              <button
+                key={persona.userId}
+                type="button"
+                disabled={busy}
+                title={`${persona.intents.join(", ")} · ${persona.interests.join(", ")}`}
+                onClick={() =>
+                  run(`act as ${persona.handle}`, async () => {
+                    await getAdapter().actAsPersona(persona.userId);
+                    setActingAs(persona.userId);
+                    reset(seed);
+                    navigate("/home");
+                  })
+                }
+                className={`rounded-full px-3 py-1.5 transition-colors disabled:opacity-40 ${
+                  actingAs === persona.userId
+                    ? "bg-accent/25 text-accent-soft"
+                    : "bg-white/[0.07] text-text hover:bg-white/[0.14]"
+                }`}
+              >
+                {persona.handle}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         {error ? (
           <p className="font-mono text-[11px] leading-relaxed text-rose-300">
