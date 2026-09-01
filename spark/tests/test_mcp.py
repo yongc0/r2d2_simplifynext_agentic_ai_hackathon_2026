@@ -53,11 +53,37 @@ def world(users):
 # ---------------------------------------------------------------------------
 
 
-def test_there_are_exactly_six_servers():
+def test_there_are_exactly_seven_servers():
+    """The catalogue is a closed set, and adding to it is a deliberate act.
+
+    `spark-places` is the seventh, added for date planning. It is the only
+    server that returns a coordinate, which is why it is named here rather than
+    allowed to appear silently — see `test_places_is_never_given_a_person`.
+    """
     assert set(TOOLS) == {
         "spark-overlap", "spark-profile", "spark-voice",
-        "spark-calendar", "spark-venue", "spark-sim",
+        "spark-calendar", "spark-venue", "spark-sim", "spark-places",
     }
+
+
+def test_places_is_never_given_a_person():
+    """The structural half of invariant 3, for the one server with coordinates.
+
+    `spark-places` can name a location. It must therefore never be able to
+    receive one, or to receive a person whose location could be looked up:
+    "somewhere near where you both were" has to be unexpressible in the
+    signature, not merely absent from the call sites.
+    """
+    import inspect
+
+    forbidden = ("user", "user_id", "cell", "overlap", "encounter", "lockin")
+    for spec in TOOLS["spark-places"]:
+        parameters = set(inspect.signature(spec.fn).parameters)
+        for name in parameters:
+            assert not any(word in name for word in forbidden), (
+                f"spark-places.{spec.name} takes {name!r}; a venue search that "
+                "can be told who is asking becomes a proximity search"
+            )
 
 
 def test_every_server_is_a_real_mcp_server(world):

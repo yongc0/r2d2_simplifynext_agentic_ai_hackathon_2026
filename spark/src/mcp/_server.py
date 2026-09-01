@@ -45,6 +45,14 @@ _INSTRUCTIONS: dict[str, str] = {
         "partners are labelled and cannot influence the ranking."
     ),
     "spark-sim": "The simulated world: personas, and the evaluation arms.",
+    "spark-places": (
+        "Real venues from OpenStreetMap, fetched once and committed — never a "
+        "live call. Returns names, addresses and coordinates, and is the only "
+        "server that does. It is never given a user id, a cell or an overlap "
+        "history, so it cannot rank by proximity to anybody; venues reach a "
+        "person only inside a post-reveal date plan (docs/ARCHITECTURE.md "
+        "§13.6). Missing opening hours are reported UNKNOWN, never assumed open."
+    ),
 }
 
 

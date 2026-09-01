@@ -357,6 +357,10 @@ class DatePreferencesIn(BaseModel):
     time_bucket: str | None = Field(default=None, alias="timeBucket")
     #: OPT-IN. Tonight's mood is not a durable preference unless asked for.
     remember: bool = False
+    #: Which of the three offered plans to turn into a real itinerary. Omitted
+    #: by "Plan the Date" — with no path named, the best-ranked one is used,
+    #: which is the whole point of a one-tap button.
+    path_id: str | None = Field(default=None, alias="pathId")
 
 
 class DateMemoryOut(BaseModel):
@@ -401,4 +405,262 @@ class PlanLockInOut(BaseModel):
     #: say why rather than showing a dead button.
     unavailable_reason: str | None = Field(
         default=None, serialization_alias="unavailableReason"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Settings
+# ---------------------------------------------------------------------------
+
+
+class SettingsOut(BaseModel):
+    """The switches a person controls.
+
+    Each maps to a field on `ConsentScope`, which is the thing the agents
+    actually consult — so a setting shown here is a setting that is enforced,
+    not a preference the interface remembers on its own.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    #: "Receive calls from Spark". Enforced in `spark-voice.connect_call`, the
+    #: single place a call can be created — not by hiding a button.
+    allow_calls: bool = Field(serialization_alias="allowCalls")
+    allow_date_suggestions: bool = Field(serialization_alias="allowDateSuggestions")
+    allow_continuity_notes: bool = Field(serialization_alias="allowContinuityNotes")
+    allow_conversation_prompts: bool = Field(
+        serialization_alias="allowConversationPrompts"
+    )
+
+
+class SettingsIn(BaseModel):
+    """A partial update. Anything omitted is left alone."""
+
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    allow_calls: bool | None = Field(default=None, alias="allowCalls")
+    allow_date_suggestions: bool | None = Field(
+        default=None, alias="allowDateSuggestions"
+    )
+    allow_continuity_notes: bool | None = Field(
+        default=None, alias="allowContinuityNotes"
+    )
+    allow_conversation_prompts: bool | None = Field(
+        default=None, alias="allowConversationPrompts"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Itineraries — the plan with real venues, times and a route
+# ---------------------------------------------------------------------------
+#
+# These carry addresses and coordinates, which nothing else in this file does.
+# That is permitted only here and only post-reveal: see `ARCHITECTURE.md` §13.6
+# and the module docstring of `src/schemas/itinerary.py`. Every one of these
+# fields describes a DESTINATION two people chose together, never a place either
+# of them has been.
+
+
+class TravelLegOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    minutes: int
+    metres: int
+    mode: str
+    #: Always true, and rendered. An estimate that looks measured is the kind of
+    #: small dishonesty that makes somebody miss a booking.
+    estimated: bool = True
+    detail: str = ""
+
+
+class ItineraryStopOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    stop_id: str = Field(serialization_alias="stopId")
+    order: int
+    activity_type: str = Field(serialization_alias="activityType")
+    venue_id: str = Field(serialization_alias="venueId")
+    venue_name: str = Field(serialization_alias="venueName")
+    #: `null` renders as "address not listed", never as a guess.
+    address: str | None = None
+    lat: float
+    lon: float
+    start_time: str = Field(serialization_alias="startTime")
+    end_time: str = Field(serialization_alias="endTime")
+    duration_minutes: int = Field(serialization_alias="durationMinutes")
+    estimated_cost: str = Field(serialization_alias="estimatedCost")
+    cost_band: str = Field(serialization_alias="costBand")
+    rationale: str
+    travel_from_previous: TravelLegOut | None = Field(
+        default=None, serialization_alias="travelFromPrevious"
+    )
+    maps_url: str = Field(serialization_alias="mapsUrl")
+    #: "open" | "closed" | "unknown". The client renders all three differently;
+    #: unknown must never be styled as open.
+    opening_state: str = Field(serialization_alias="openingState")
+    opening_hours: str | None = Field(
+        default=None, serialization_alias="openingHours"
+    )
+    opening_detail: str = Field(default="", serialization_alias="openingDetail")
+    is_commercial_partner: bool = Field(
+        default=False, serialization_alias="isCommercialPartner"
+    )
+
+
+class ItineraryOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    itinerary_id: str = Field(serialization_alias="itineraryId")
+    lock_in_id: str = Field(serialization_alias="lockInId")
+    path_id: str = Field(serialization_alias="pathId")
+    headline: str
+    time_bucket: str = Field(serialization_alias="timeBucket")
+    day_label: str = Field(serialization_alias="dayLabel")
+    stops: list[ItineraryStopOut] = Field(default_factory=list)
+    total_duration_minutes: int = Field(serialization_alias="totalDurationMinutes")
+    total_cost_estimate: str = Field(serialization_alias="totalCostEstimate")
+    grounded_in: list[str] = Field(serialization_alias="groundedIn")
+    status: str
+    note: str = ""
+    #: A licence condition. Any surface rendering these venues shows it.
+    attribution: str = "© OpenStreetMap contributors"
+    updated_at: str = Field(serialization_alias="updatedAt")
+    #: Whether THIS viewer has already written a reflection. Never whether the
+    #: other person has — that is the whole point of a private reflection.
+    has_reflection: bool = Field(default=False, serialization_alias="hasReflection")
+
+
+class ItineraryResultOut(BaseModel):
+    """An itinerary, or a stated reason there is not one.
+
+    A single shape for both outcomes so the client cannot accidentally render an
+    empty plan as a plan. `unavailable` distinguishes "we have no venue data"
+    from "nothing that fits is open then" — §12 asks for both states, and they
+    are different facts about the world.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    itinerary: ItineraryOut | None = None
+    #: Present only when `itinerary` is null.
+    reason: str = ""
+    #: True when the cause is missing venue data rather than an empty result.
+    data_unavailable: bool = Field(
+        default=False, serialization_alias="dataUnavailable"
+    )
+
+
+class ItineraryStatusIn(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    #: One of `USER_SETTABLE_STATUSES`. `draft` and `completed` are not a
+    #: person's to set — the planner owns one and the clock owns the other.
+    status: str
+
+
+class ReflectionIn(BaseModel):
+    """The post-date form.
+
+    PRIVATE. There is no route that returns this to anybody but its author, and
+    no field here names the other person.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    overall: int = Field(ge=1, le=5)
+    #: Optional per aspect: somebody who only wants to leave an overall rating
+    #: must be able to. Keys are `ReflectionAspect`; values 1-5.
+    ratings: dict[str, int] = Field(default_factory=dict)
+    second_date: str = Field(alias="secondDate")
+    notes: str = Field(default="", max_length=2000)
+
+
+class ReflectionOut(BaseModel):
+    """A reflection, shown back to the person who wrote it. Nobody else."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    reflection_id: str = Field(serialization_alias="reflectionId")
+    itinerary_id: str = Field(serialization_alias="itineraryId")
+    lock_in_id: str = Field(serialization_alias="lockInId")
+    overall: int
+    ratings: dict[str, int] = Field(default_factory=dict)
+    second_date: str = Field(serialization_alias="secondDate")
+    notes: str = ""
+    created_at: str = Field(serialization_alias="createdAt")
+    #: Said in the interface, every time: what this is used for and what it is
+    #: not. A privacy promise nobody is shown is not a privacy promise.
+    privacy_note: str = Field(
+        default=(
+            "Only you can see this. It is never shown to the person you met, "
+            "and they are never told whether you filled it in."
+        ),
+        serialization_alias="privacyNote",
+    )
+
+
+class PlacesStatusOut(BaseModel):
+    """Whether real venue data is loaded. Drives the §12 unavailable state."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    available: bool
+    count: int
+    with_hours: int = Field(serialization_alias="withHours")
+    source: str
+    attribution: str
+    note: str
+
+
+class ProfileOut(BaseModel):
+    """The editable half of a person's own profile.
+
+    Their OWN. This model is only ever built for the viewer, and there is no
+    route that returns it for anybody else — a matchable profile is exactly the
+    thing the product refuses to let people browse.
+
+    Note what is absent and must stay absent (§13.1): height, appearance, and
+    anything photographic. The product's central claim is that it removes
+    judgement-by-photograph, so there is nowhere to put one.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    intents: list[str] = Field(default_factory=list)
+    interests: list[str] = Field(default_factory=list)
+    values: list[str] = Field(default_factory=list)
+    personality: str = ""
+    lifestyle: str = ""
+    languages: list[str] = Field(default_factory=list)
+    availability_window: list[str] = Field(
+        default_factory=list, serialization_alias="availabilityWindow"
+    )
+    #: Which time buckets this person has ever actually been out in. Offered as
+    #: the choices for availability, because a window nobody is ever free in is
+    #: a preference that quietly removes them from every pool.
+    known_buckets: list[str] = Field(
+        default_factory=list, serialization_alias="knownBuckets"
+    )
+
+
+class ProfileIn(BaseModel):
+    """A partial update. Anything omitted is left alone.
+
+    THIS IS NOT A UI-ONLY FORM. What it writes is the same `Profile` the Match
+    Agent reads: intents gate eligibility, interests decide overlap scoring and
+    every date plan's grounding, and the availability window decides which
+    encounter slots this person can be offered at all. Changing something here
+    changes who Spark suggests, not just what the screen says.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    intents: list[str] | None = None
+    interests: list[str] | None = Field(default=None, max_length=20)
+    values: list[str] | None = Field(default=None, max_length=10)
+    personality: str | None = Field(default=None, max_length=280)
+    lifestyle: str | None = Field(default=None, max_length=280)
+    languages: list[str] | None = None
+    availability_window: list[str] | None = Field(
+        default=None, alias="availabilityWindow"
     )

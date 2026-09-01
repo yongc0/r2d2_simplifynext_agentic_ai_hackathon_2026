@@ -46,11 +46,24 @@ from src.api.schemas import (
     GuardianCheckInOut,
     ExtractionOut,
     HealthOut,
+    ItineraryOut,
+    ItineraryResultOut,
+    ItineraryStatusIn,
+    ItineraryStopOut,
     LockInOut,
+    PlacesStatusOut,
     PlanLockInOut,
+    ProfileIn,
+    ProfileOut,
+    ReflectionIn,
+    ReflectionOut,
     RespondIn,
+    SettingsIn,
+    SettingsOut,
+    TravelLegOut,
 )
 from src.agents.date import DateAgent
+from src.agents.itinerary import ItineraryAgent, NoItinerary
 from src.agents.guardian import GuardianAgent, IncidentLog
 from src.agents.onboarding import OnboardingAgent
 from src.api.session import (
@@ -65,12 +78,13 @@ from src.api.session import (
 from src.config import SETTINGS
 from src.mcp.services import WORLD
 from src.safety.consent import build_reveal, reveal_permitted
-from src.schemas.core import EncounterState, LockIn
+from src.schemas.core import EncounterState, Intent, LockIn, TimeBucket
 from src.schemas.date_studio import (
     DatePlanFeedback,
     DatePlanningPreferences,
     DatePlanRecord,
 )
+from src.schemas.itinerary import USER_SETTABLE_STATUSES, DateItinerary
 
 router = APIRouter(prefix="/api")
 
@@ -281,6 +295,162 @@ def onboarding_extract(body: ExtractIn) -> ExtractionOut:
 
 
 # ---------------------------------------------------------------------------
+# Settings
+# ---------------------------------------------------------------------------
+
+
+def _viewer_scope(session: SparkSession):
+    """The consent scope the settings screen reads and writes.
+
+    With no auth the viewer is whoever the demo is following, derived from the
+    session rather than taken from the request — the same rule every other
+    owner-scoped route follows.
+    """
+    return session.user(session.viewer_user_id()).consent_scope
+
+
+def _profile_out(session: SparkSession) -> ProfileOut:
+    """This viewer's own profile, plus the buckets they are genuinely ever out in.
+
+    `known_buckets` comes from their overlap history rather than from the full
+    enum. Offering "early morning" to somebody who has never once been out then
+    invites them to set a window that removes them from every pool — a
+    preference screen that can quietly switch the product off is worse than one
+    with fewer options.
+    """
+    user = session.user(session.viewer_user_id())
+    seen = session.runtime.client.try_call(
+        "spark-calendar",
+        "availability",
+        default={"buckets": []},
+        user_id=user.id,
+    ) or {"buckets": []}
+    known = list(seen.get("buckets") or [])
+    return ProfileOut(
+        intents=[i.value for i in user.profile.intents],
+        interests=list(user.profile.interests),
+        values=list(user.profile.values),
+        personality=user.profile.personality,
+        lifestyle=user.profile.lifestyle,
+        languages=list(user.profile.languages),
+        availability_window=[b.value for b in user.profile.availability_window],
+        known_buckets=known or [b.value for b in TimeBucket],
+    )
+
+
+@router.get("/profile", response_model=ProfileOut, response_model_by_alias=True)
+def get_profile() -> ProfileOut:
+    """The viewer's own profile. There is no route that returns anybody else's."""
+    return _profile_out(get_session())
+
+
+@router.put("/profile", response_model=ProfileOut, response_model_by_alias=True)
+def put_profile(body: ProfileIn) -> ProfileOut:
+    """Change what Spark matches you on.
+
+    NOT A UI-ONLY PREFERENCES PAGE. This writes the same `Profile` object the
+    Match Agent reads, so the next encounter is scored against the new values:
+    intents gate eligibility, interests drive overlap scoring and ground every
+    date plan, and the availability window decides which slots you can be
+    offered in at all.
+
+    Validation is strict and the errors say why. An intent outside the vocabulary
+    or a time bucket that does not exist is rejected rather than dropped — a
+    preference silently discarded is worse than one refused, because the person
+    believes it took.
+    """
+    session = get_session()
+    user = session.user(session.viewer_user_id())
+    profile = user.profile
+
+    updates: dict[str, object] = {}
+
+    if body.intents is not None:
+        if not body.intents:
+            # `Profile.intents` has min_length=1, and for a good reason: a
+            # person with no stated intent cannot be matched with anybody.
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "at least one connection intent is required — with none, "
+                    "there is nobody you could be matched with"
+                ),
+            )
+        try:
+            updates["intents"] = [Intent(value) for value in body.intents]
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"unknown connection intent: {exc}. Valid: "
+                f"{[i.value for i in Intent]}",
+            ) from exc
+
+    if body.availability_window is not None:
+        try:
+            updates["availability_window"] = [
+                TimeBucket(value) for value in body.availability_window
+            ]
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"unknown time bucket: {exc}. Valid: "
+                f"{[b.value for b in TimeBucket]}",
+            ) from exc
+
+    for field in ("interests", "values", "personality", "lifestyle", "languages"):
+        value = getattr(body, field)
+        if value is not None:
+            updates[field] = value
+
+    if updates:
+        # Rebuilt through the model, so the same validators the onboarding path
+        # runs — deduplication, casing, length caps — apply to an edit too.
+        try:
+            user.profile = profile.model_copy(update=updates)
+            user.profile = type(profile).model_validate(user.profile.model_dump())
+        except Exception as exc:                              # noqa: BLE001
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return _profile_out(session)
+
+
+@router.get("/settings", response_model=SettingsOut, response_model_by_alias=True)
+def get_settings() -> SettingsOut:
+    scope = _viewer_scope(get_session())
+    return SettingsOut(
+        allow_calls=scope.allow_calls,
+        allow_date_suggestions=scope.allow_date_suggestions,
+        allow_continuity_notes=scope.allow_continuity_notes,
+        allow_conversation_prompts=scope.allow_conversation_prompts,
+    )
+
+
+@router.put("/settings", response_model=SettingsOut, response_model_by_alias=True)
+def put_settings(body: SettingsIn) -> SettingsOut:
+    """Change a switch, and mean it.
+
+    These write to `ConsentScope`, which the agents consult before acting —
+    `allow_calls` is read by `spark-voice.connect_call` and by the Delivery
+    Agent before it even reaches the bridge. Turning a switch off here removes
+    a capability rather than hiding a control.
+
+    A partial update: fields omitted are left alone, so one screen toggling one
+    switch cannot silently reset the others.
+    """
+    scope = _viewer_scope(get_session())
+    for field in (
+        "allow_calls",
+        "allow_date_suggestions",
+        "allow_continuity_notes",
+        "allow_conversation_prompts",
+    ):
+        value = getattr(body, field)
+        if value is not None:
+            setattr(scope, field, value)
+    return get_settings()
+
+
+# ---------------------------------------------------------------------------
 # Date Studio
 # ---------------------------------------------------------------------------
 #
@@ -421,19 +591,32 @@ def create_date_plans(lockin_id: str, body: DatePreferencesIn) -> DatePlanOut:
     """
     session = get_session()
     lockin = _planning_lockin(session, lockin_id)
+    return _plan_out(_studio_plan_for(session, lockin, body))
+
+
+def _studio_plan_for(session: SparkSession, lockin, body: DatePreferencesIn):
+    """Rank three plans for this pair, and snapshot what was shown.
+
+    Extracted so `POST /date-plans` and `POST /itineraries` share one planner
+    rather than two that drift. Both need the same three things: the remembered
+    preferences applied, the feedback history applied, and every offered plan
+    recorded — without that last step a client could later submit feedback for a
+    plan that was never offered, and the memory would fill with beliefs derived
+    from nothing.
+    """
     viewer_id = session.viewer_id(lockin)
     viewer = session.user(viewer_id)
     peer = session.user(lockin.other(viewer_id))
 
     if body.remember:
-        put_date_preferences(lockin_id, body)
+        put_date_preferences(lockin.id, body)
 
     preferences = DatePlanningPreferences(
         mood=body.mood, budget=body.budget, duration=body.duration,
         energy=body.energy, formats=body.formats, time_bucket=body.time_bucket,
     )
-    memory = session.date_memory.for_owner(viewer_id, lockin_id)
-    feedback = session.date_memory.feedback_for(viewer_id, lockin_id)
+    memory = session.date_memory.for_owner(viewer_id, lockin.id)
+    feedback = session.date_memory.feedback_for(viewer_id, lockin.id)
 
     seen_leads = set()
     saved_shapes = set()
@@ -451,9 +634,6 @@ def create_date_plans(lockin_id: str, body: DatePreferencesIn) -> DatePlanOut:
         seen_leads=seen_leads, saved_shapes=saved_shapes,
     )
 
-    # Snapshot every plan shown, so later feedback can be validated against
-    # something that was actually offered rather than against a plan id a
-    # client made up.
     now = datetime.now()
     for path in plan.paths:
         session.date_memory.record_plan(
@@ -465,7 +645,7 @@ def create_date_plans(lockin_id: str, body: DatePreferencesIn) -> DatePlanOut:
                 formats=[], created_at=now,
             )
         )
-    return _plan_out(plan)
+    return plan
 
 
 @router.post("/date-plans/{plan_id}/feedback")
@@ -626,6 +806,407 @@ def _plan_out(plan) -> DatePlanOut:
         ],
         note=plan.note,
     )
+
+
+# ---------------------------------------------------------------------------
+# Itineraries — the plan with real venues, times and a route
+# ---------------------------------------------------------------------------
+#
+# The only routes in the API that return a coordinate, and they are safe for the
+# reason ARCHITECTURE §13.6 gives: they run on a LOCK-IN, which exists only
+# after a mutual reveal, and the catalogue behind them is never told where
+# either person has been. A destination two people chose together is not a
+# disclosure of where either of them was.
+#
+# Every route derives the owner from the session. None accepts an owner id.
+
+
+def _itinerary_out(session: SparkSession, itinerary: DateItinerary) -> ItineraryOut:
+    """One plan, as the client sees it.
+
+    `has_reflection` is THIS viewer's own. There is deliberately no field for
+    whether the other person wrote one: that fact is itself a signal, and a
+    screen that showed it would let somebody infer an answer they were never
+    meant to see.
+    """
+    return ItineraryOut(
+        itinerary_id=itinerary.itinerary_id,
+        lock_in_id=itinerary.lockin_id,
+        path_id=itinerary.path_id,
+        headline=itinerary.headline,
+        time_bucket=itinerary.time_bucket.value,
+        day_label=itinerary.day_label,
+        stops=[
+            ItineraryStopOut(
+                stop_id=stop.stop_id,
+                order=stop.order,
+                activity_type=stop.activity_type,
+                venue_id=stop.venue_id,
+                venue_name=stop.venue_name,
+                address=stop.address,
+                lat=stop.lat,
+                lon=stop.lon,
+                start_time=stop.start_time,
+                end_time=stop.end_time,
+                duration_minutes=stop.duration_minutes,
+                estimated_cost=stop.estimated_cost,
+                cost_band=stop.cost_band,
+                rationale=stop.rationale,
+                travel_from_previous=(
+                    TravelLegOut(
+                        minutes=stop.travel_from_previous.minutes,
+                        metres=stop.travel_from_previous.metres,
+                        mode=stop.travel_from_previous.mode,
+                        detail=stop.travel_from_previous.detail,
+                    )
+                    if stop.travel_from_previous
+                    else None
+                ),
+                maps_url=stop.maps_url,
+                opening_state=stop.opening_state,
+                opening_hours=stop.opening_hours,
+                opening_detail=stop.opening_detail,
+                is_commercial_partner=stop.is_commercial_partner,
+            )
+            for stop in itinerary.stops
+        ],
+        total_duration_minutes=itinerary.total_duration_minutes,
+        total_cost_estimate=itinerary.total_cost_estimate,
+        grounded_in=list(itinerary.grounded_in),
+        status=itinerary.status,
+        note=itinerary.note,
+        attribution=itinerary.attribution,
+        updated_at=itinerary.updated_at.isoformat(),
+        has_reflection=session.itineraries.reflection_for(
+            itinerary.itinerary_id, itinerary.owner_id
+        )
+        is not None,
+    )
+
+
+def _owned_itinerary(session: SparkSession, itinerary_id: str) -> DateItinerary:
+    """This viewer's plan, or a 404.
+
+    A plan belonging to somebody else 404s rather than 403s. A 403 would confirm
+    that a plan exists under that id, which is a fact about another person's
+    evening.
+    """
+    owner_id = session.viewer_user_id()
+    itinerary = session.itineraries.get(itinerary_id, owner_id)
+    if itinerary is None:
+        raise HTTPException(status_code=404, detail=f"no itinerary {itinerary_id}")
+    return itinerary
+
+
+@router.get(
+    "/places/status", response_model=PlacesStatusOut, response_model_by_alias=True
+)
+def places_status() -> PlacesStatusOut:
+    """Whether real venue data is loaded.
+
+    Read by the client BEFORE it offers to plan, so "we cannot name places yet"
+    is a state the interface enters deliberately rather than an empty list a
+    user has to interpret (§12).
+    """
+    session = get_session()
+    state = session.runtime.client.try_call(
+        "spark-places",
+        "places_available",
+        default={
+            "available": False,
+            "count": 0,
+            "with_hours": 0,
+            "source": "openstreetmap",
+            "attribution": "",
+            "note": "",
+        },
+    )
+    return PlacesStatusOut(
+        available=bool(state["available"]),
+        count=int(state["count"]),
+        with_hours=int(state["with_hours"]),
+        source=str(state["source"]),
+        attribution=str(state["attribution"]),
+        note=str(state["note"]),
+    )
+
+
+@router.post(
+    "/lockins/{lockin_id}/itineraries",
+    response_model=ItineraryResultOut,
+    response_model_by_alias=True,
+)
+def create_itinerary(lockin_id: str, body: DatePreferencesIn) -> ItineraryResultOut:
+    """Plan the date: rank the evening, then bind it to real places and times.
+
+    ONE CALL, because this is the "Plan the Date" button and a button that then
+    requires the user to pick a path, then a venue, then a time is not a button.
+    With no `pathId` the best-ranked plan is used; with one, that plan is bound
+    instead, which is how Date Studio turns a chosen option into an itinerary.
+
+    Two agents run here and the order matters. `DateAgent.studio_plan` decides
+    the SHAPE from shared interests and remembered preferences, over a catalogue
+    with no location field. `ItineraryAgent.build` then binds that shape to real
+    venues, from a catalogue that has coordinates and has never been told where
+    anybody is. Neither half can see what the other must not.
+    """
+    session = get_session()
+    lockin = _planning_lockin(session, lockin_id)
+    viewer_id = session.viewer_id(lockin)
+
+    plan = _studio_plan_for(session, lockin, body)
+    if not plan.paths:
+        return ItineraryResultOut(
+            itinerary=None,
+            reason=plan.note or "Nothing that fits you both, at a time you share.",
+        )
+
+    chosen = plan.paths[0]
+    if body.path_id:
+        matched = [p for p in plan.paths if p.path_id == body.path_id]
+        if not matched:
+            # The offered plans are re-derived per request, so a stale id is an
+            # ordinary consequence of changed preferences rather than a fault.
+            # Falling back silently would hand somebody a different evening from
+            # the one they tapped.
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "that plan is no longer among the current suggestions — "
+                    "generate again and pick one of these"
+                ),
+            )
+        chosen = matched[0]
+
+    result = ItineraryAgent(client=session.runtime.client).build(
+        chosen, owner_id=viewer_id, day_label=_day_label(chosen.proposed_bucket.value)
+    )
+    if isinstance(result, NoItinerary):
+        return ItineraryResultOut(
+            itinerary=None,
+            reason=result.reason,
+            data_unavailable=result.data_unavailable,
+        )
+
+    saved = session.itineraries.save(result)
+    return ItineraryResultOut(itinerary=_itinerary_out(session, saved))
+
+
+@router.get(
+    "/itineraries", response_model=list[ItineraryOut], response_model_by_alias=True
+)
+def list_itineraries(lockInId: str | None = None) -> list[ItineraryOut]:
+    """Date history — this viewer's plans, newest first.
+
+    Every status, including cancelled. A history that hid the dates that did not
+    happen would be a highlight reel, and the person already knows.
+    """
+    session = get_session()
+    owner_id = session.viewer_user_id()
+    return [
+        _itinerary_out(session, itinerary)
+        for itinerary in session.itineraries.for_owner(owner_id, lockInId)
+    ]
+
+
+@router.get(
+    "/itineraries/{itinerary_id}",
+    response_model=ItineraryOut,
+    response_model_by_alias=True,
+)
+def get_itinerary(itinerary_id: str) -> ItineraryOut:
+    session = get_session()
+    return _itinerary_out(session, _owned_itinerary(session, itinerary_id))
+
+
+@router.post(
+    "/itineraries/{itinerary_id}/stops/{order}/replace",
+    response_model=ItineraryResultOut,
+    response_model_by_alias=True,
+)
+def replace_itinerary_stop(itinerary_id: str, order: int) -> ItineraryResultOut:
+    """Swap one stop. The others keep their venues; the later ones are re-timed.
+
+    Re-timing is not optional and not a side effect: a different venue is a
+    different walk, and a plan whose later times did not move would be a
+    schedule that no longer adds up.
+
+    On failure THE STORED PLAN IS UNTOUCHED and the reason is returned alongside
+    it. "There is nothing else of that kind open then" must not cost somebody
+    the plan they already had.
+    """
+    session = get_session()
+    itinerary = _owned_itinerary(session, itinerary_id)
+    result = ItineraryAgent(client=session.runtime.client).replace_stop(
+        itinerary, order
+    )
+    if isinstance(result, NoItinerary):
+        return ItineraryResultOut(
+            itinerary=_itinerary_out(session, itinerary),
+            reason=result.reason,
+            data_unavailable=result.data_unavailable,
+        )
+    saved = session.itineraries.save(result)
+    return ItineraryResultOut(itinerary=_itinerary_out(session, saved))
+
+
+@router.put(
+    "/itineraries/{itinerary_id}/status",
+    response_model=ItineraryOut,
+    response_model_by_alias=True,
+)
+def set_itinerary_status(itinerary_id: str, body: ItineraryStatusIn) -> ItineraryOut:
+    """Move a plan along: proposed, confirmed, or cancelled.
+
+    `completed` is not settable. A person cannot mark a future evening done, and
+    the reflection form is what actually records that one happened.
+
+    There is no status meaning "they said no". A plan the other person did not
+    take up is `cancelled`, indistinguishable from one nobody got round to —
+    invariant 2's rule, still holding after the reveal.
+    """
+    session = get_session()
+    _owned_itinerary(session, itinerary_id)
+    if body.status not in USER_SETTABLE_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"status must be one of {list(USER_SETTABLE_STATUSES)}; "
+                f"{body.status!r} is set by Spark, not by a person"
+            ),
+        )
+    updated = session.itineraries.set_status(
+        itinerary_id, session.viewer_user_id(), body.status
+    )
+    assert updated is not None      # _owned_itinerary already proved ownership
+    return _itinerary_out(session, updated)
+
+
+# ---------------------------------------------------------------------------
+# After the date — private, and structurally so
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/itineraries/{itinerary_id}/reflection",
+    response_model=ReflectionOut,
+    response_model_by_alias=True,
+)
+def write_reflection(itinerary_id: str, body: ReflectionIn) -> ReflectionOut:
+    """How the date went, for the person who was on it.
+
+    PRIVATE. It is stored against this viewer, returned only to this viewer, and
+    the other person is never told it exists. Nothing in the response, and
+    nothing this route triggers, is observable by them — no notification, no
+    status change on their side, no silence that begins the moment it is
+    submitted.
+
+    Two things happen, and the second is deliberately small. The reflection is
+    stored whole, for the person who wrote it. Separately, `planning_signal` may
+    emit ONE ordinary piece of Date Studio feedback about the PLAN — the same
+    kind a thumbs-down produces — so that what Spark suggests next can improve.
+    Nothing about the human being is stored, ranked or learned, and
+    `second_date` reaches the recommender in no form at all.
+    """
+    session = get_session()
+    itinerary = _owned_itinerary(session, itinerary_id)
+    owner_id = itinerary.owner_id
+
+    if body.second_date not in ("yes", "maybe", "no"):
+        raise HTTPException(
+            status_code=422, detail="secondDate must be yes, maybe or no"
+        )
+
+    reflection = session.itineraries.record_reflection(
+        itinerary_id=itinerary_id,
+        lockin_id=itinerary.lockin_id,
+        owner_id=owner_id,
+        overall=body.overall,
+        ratings=body.ratings,
+        second_date=body.second_date,
+        notes=body.notes,
+    )
+
+    # A date somebody reflected on is a date that happened.
+    if itinerary.status != "completed":
+        session.itineraries.set_status(itinerary_id, owner_id, "completed")
+
+    signal = reflection.planning_signal()
+    if signal is not None and session.date_memory.get_plan(itinerary.path_id):
+        action, reasons = signal
+        session.date_memory.record_feedback(
+            DatePlanFeedback(
+                feedback_id=f"fb-refl-{reflection.reflection_id}",
+                plan_id=itinerary.path_id,
+                lockin_id=itinerary.lockin_id,
+                owner_id=owner_id,
+                action=action,
+                reasons=reasons,
+                created_at=datetime.now(),
+            )
+        )
+
+    return _reflection_out(reflection)
+
+
+@router.get(
+    "/itineraries/{itinerary_id}/reflection",
+    response_model=ReflectionOut,
+    response_model_by_alias=True,
+)
+def read_reflection(itinerary_id: str) -> ReflectionOut:
+    """This viewer's own reflection. There is no route that returns anyone
+    else's, and there must not be one."""
+    session = get_session()
+    itinerary = _owned_itinerary(session, itinerary_id)
+    reflection = session.itineraries.reflection_for(itinerary_id, itinerary.owner_id)
+    if reflection is None:
+        raise HTTPException(
+            status_code=404, detail="you have not written one for this date"
+        )
+    return _reflection_out(reflection)
+
+
+@router.delete("/reflections/{reflection_id}")
+def forget_reflection(reflection_id: str) -> dict:
+    """Delete your own reflection. Soft, so the audit trail survives; invisible
+    to everybody either way."""
+    session = get_session()
+    removed = session.itineraries.forget_reflection(
+        reflection_id, session.viewer_user_id()
+    )
+    if not removed:
+        raise HTTPException(status_code=404, detail=f"no reflection {reflection_id}")
+    return {"forgotten": True}
+
+
+def _reflection_out(reflection) -> ReflectionOut:
+    return ReflectionOut(
+        reflection_id=reflection.reflection_id,
+        itinerary_id=reflection.itinerary_id,
+        lock_in_id=reflection.lockin_id,
+        overall=reflection.overall,
+        ratings=dict(reflection.ratings),
+        second_date=reflection.second_date,
+        notes=reflection.notes,
+        created_at=reflection.created_at.isoformat(),
+    )
+
+
+def _day_label(bucket: str) -> str:
+    """A bucket read as a day, for the plan header.
+
+    A LABEL, not a date. Nothing here has agreed a calendar day with anybody,
+    and printing "Saturday 6 September" would imply it had.
+    """
+    return {
+        "early_morning": "An early start",
+        "morning": "A morning",
+        "midday": "Lunchtime",
+        "afternoon": "An afternoon",
+        "evening": "An evening",
+        "night": "A late one",
+    }.get(bucket, "An evening")
 
 
 # ---------------------------------------------------------------------------

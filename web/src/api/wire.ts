@@ -139,6 +139,29 @@ export function overlapHintFor(bucket: string | null | undefined): string {
 }
 
 /** Intent, rendered for a person. British spelling, per CLAUDE.md. */
+/**
+ * A label back to the value the backend stores.
+ *
+ * The inverse of `intentLabel`, kept beside it so the two cannot drift. The
+ * profile screen edits labels and the API takes values, and deriving one from
+ * the other at a call site would put this mapping in two places.
+ */
+export function intentValue(label: string): string {
+  const match = (
+    ["partner_long_term", "partner_short_term", "friends"] as const
+  ).find((value) => intentLabel(value) === label);
+  if (!match) {
+    // Actionable rather than a silent fallback: a label with no value means
+    // the two lists have drifted, and defaulting would quietly change what
+    // somebody is looking for.
+    throw new Error(
+      `no connection intent matches the label ${label} — intentLabel and ` +
+        "intentValue have drifted apart",
+    );
+  }
+  return match;
+}
+
 export function intentLabel(intent: Intent): string {
   switch (intent) {
     case "partner_long_term":

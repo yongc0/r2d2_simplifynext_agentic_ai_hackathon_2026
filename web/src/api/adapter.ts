@@ -21,9 +21,16 @@ import type {
   DemoPersona,
   DatePlan,
   DatePreferences,
+  EditableProfile,
   EncounterCard,
+  Itinerary,
+  ItineraryResult,
+  PlacesStatus,
   PlanLockIn,
+  Reflection,
+  ReflectionDraft,
   RejectionReason,
+  Settings,
   LockIn,
   OnboardingTurn,
   RevealedPerson,
@@ -127,10 +134,93 @@ export interface Adapter {
     reasons?: RejectionReason[],
   ): Promise<void>;
 
+  // --- Itineraries: the plan with real places, times and a route -------
+  //
+  // POST-REVEAL ONLY, same boundary as the rest of Date Studio.
+
+  /**
+   * Whether Spark has venue data at all.
+   *
+   * Called BEFORE offering to plan, so "we cannot name places yet" is a state
+   * the interface enters deliberately rather than an empty list a person has
+   * to interpret.
+   */
+  getPlacesStatus(): Promise<PlacesStatus>;
+
+  /**
+   * Plan the date: rank the evening, then bind it to real venues and times.
+   *
+   * One call, because this is one button. Omit `pathId` and the best-ranked
+   * plan is used, which is what "Plan the Date" does.
+   */
+  createItinerary(
+    lockInId: string,
+    preferences: Partial<DatePreferences> & { remember?: boolean; pathId?: string },
+  ): Promise<ItineraryResult>;
+
+  /** This viewer's plans, newest first. Every status, including cancelled. */
+  getItineraries(lockInId?: string): Promise<Itinerary[]>;
+
+  getItinerary(itineraryId: string): Promise<Itinerary>;
+
+  /**
+   * Swap one stop. The earlier ones are untouched; the later ones are re-timed,
+   * because a different venue is a different walk.
+   *
+   * On failure the STORED PLAN COMES BACK UNCHANGED alongside the reason —
+   * "nothing else of that kind is open then" must not cost somebody the plan
+   * they already had.
+   */
+  replaceItineraryStop(
+    itineraryId: string,
+    order: number,
+  ): Promise<ItineraryResult>;
+
+  /** proposed / confirmed / cancelled. `completed` is not a person's to set. */
+  setItineraryStatus(
+    itineraryId: string,
+    status: "proposed" | "confirmed" | "cancelled",
+  ): Promise<Itinerary>;
+
+  /**
+   * How the date went — PRIVATE to the person who writes it.
+   *
+   * There is deliberately no method for reading anybody else's, and adding one
+   * would break the promise the form makes.
+   */
+  writeReflection(
+    itineraryId: string,
+    draft: ReflectionDraft,
+  ): Promise<Reflection>;
+  getReflection(itineraryId: string): Promise<Reflection | null>;
+  forgetReflection(reflectionId: string): Promise<void>;
+
   /** What Spark remembers about this viewer. */
   getDateMemory(lockInId?: string): Promise<DateMemory[]>;
   correctDateMemory(memoryId: string, value: string): Promise<void>;
   forgetDateMemory(memoryId: string): Promise<void>;
+
+  // --- Your own settings and profile ----------------------------------
+
+  /** The consent switches, including "Receive calls from Spark". */
+  getSettings(): Promise<Settings>;
+
+  /** A partial update. Anything omitted is left alone. */
+  updateSettings(patch: Partial<Settings>): Promise<Settings>;
+
+  /**
+   * Your own profile — and only ever your own.
+   *
+   * There is deliberately no method for reading somebody else's. A browsable
+   * matchable profile is precisely the thing this product does not have.
+   */
+  getProfile(): Promise<EditableProfile>;
+
+  /**
+   * Change what Spark matches you on. This is not cosmetic: the next encounter
+   * is scored against the new values.
+   */
+  updateProfile(patch: Partial<EditableProfile>): Promise<EditableProfile>;
 
   getLockIns(): Promise<LockIn[]>;
   getBriefs(): Promise<ContinuityBrief[]>;

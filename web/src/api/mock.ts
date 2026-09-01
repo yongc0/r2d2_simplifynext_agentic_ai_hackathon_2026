@@ -22,12 +22,25 @@
  * produces an identity.
  */
 
+import {
+  MOCK_VENUES,
+  buildMockItinerary,
+  replaceMockStop,
+} from "./mockItinerary";
+
 import type { Adapter, CallTick, ConversationPrompt } from "./adapter";
 import type {
   AgentEvent,
   ConsentOutcome,
   ContinuityBrief,
   DateMemory,
+  EditableProfile,
+  Itinerary,
+  ItineraryResult,
+  PlacesStatus,
+  Reflection,
+  ReflectionDraft,
+  Settings,
   DemoPersona,
   DatePath,
   DatePlan,
@@ -258,6 +271,36 @@ export class MockAdapter implements Adapter {
   private memory: DateMemory[] = [];
   /** Plans actually shown, so feedback can be validated and attributed. */
   private plans = new Map<string, { lockInId: string; leadVenueId: string }>();
+  /** Plans with real venues in them, and the private reflections on them.
+   *  Cleared by `reset`, like everything else a take can dirty. */
+  /**
+   * The consent switches, offline.
+   *
+   * `allowCalls` genuinely gates the mock's call flow — see `openEncounter`.
+   * The offline demo must not be the one place where the toggle is decoration:
+   * if this were only read by the settings screen, the take would show a switch
+   * that visibly does nothing.
+   */
+  private settings: Settings = {
+    allowCalls: true,
+    allowDateSuggestions: true,
+    allowContinuityNotes: true,
+    allowConversationPrompts: false,
+  };
+
+  private profile: EditableProfile = {
+    intents: ["partner_long_term"],
+    interests: ["coffee", "reading", "photography"],
+    values: ["curiosity", "kindness"],
+    personality: "",
+    lifestyle: "",
+    languages: ["English"],
+    availabilityWindow: ["evening"],
+    knownBuckets: ["midday", "afternoon", "evening", "night"],
+  };
+
+  private itineraries = new Map<string, Itinerary>();
+  private reflections = new Map<string, Reflection>();
   private feedback: {
     planId: string;
     lockInId: string;
@@ -284,7 +327,14 @@ export class MockAdapter implements Adapter {
   async getEncounter(): Promise<EncounterCard> {
     return {
       encounterId: this.encounterId,
-      state: "NOTIFIED",
+      // "Receive calls from Spark", enforced rather than merely displayed.
+      //
+      // The server routes a calls-disabled encounter to ABANDONED, which is the
+      // SAME terminal state as a no-show — deliberately, so nothing downstream
+      // can tell a settings choice from somebody not picking up. The mock does
+      // the same, so the offline demo is not the one place where the toggle is
+      // decoration.
+      state: this.settings.allowCalls ? "NOTIFIED" : "ABANDONED",
       intent: "partner_long_term",
       handle: PEER_HANDLE,
       sharedInterests: [...SHARED_INTERESTS],
@@ -543,6 +593,131 @@ export class MockAdapter implements Adapter {
     }
   }
 
+  // --- Itineraries -----------------------------------------------------
+  //
+  // The mock plans against `MOCK_VENUES`, which is generated from the same
+  // OpenStreetMap fetch the backend uses (`scripts/export_venues_for_web.py`).
+  // When that file has not been generated the list is empty and every method
+  // here reports the SAME unavailable state the backend would — the offline
+  // demo must not be the one place that quietly invents an address.
+
+  async getPlacesStatus(): Promise<PlacesStatus> {
+    return {
+      available: MOCK_VENUES.length > 0,
+      count: MOCK_VENUES.length,
+      withHours: MOCK_VENUES.filter((v) => v.openingHours).length,
+      source: "openstreetmap",
+      attribution: "\u00a9 OpenStreetMap contributors",
+      note:
+        MOCK_VENUES.length > 0
+          ? "Fetched once and committed; Spark has not evaluated these businesses."
+          : "No venue data bundled. Run scripts/fetch_venues.py, then scripts/export_venues_for_web.py.",
+    };
+  }
+
+  async createItinerary(
+    lockInId: string,
+    preferences: Partial<DatePreferences> & {
+      remember?: boolean;
+      pathId?: string;
+    },
+  ): Promise<ItineraryResult> {
+    if (MOCK_VENUES.length === 0) {
+      return {
+        itinerary: null,
+        reason:
+          "Spark has no venue data loaded, so it cannot name real places yet. " +
+          "We would rather show nothing than invent an address.",
+        dataUnavailable: true,
+      };
+    }
+    const built = buildMockItinerary(lockInId, preferences, this.itineraries);
+    if (built.itinerary) this.itineraries.set(built.itinerary.itineraryId, built.itinerary);
+    return built;
+  }
+
+  async getItineraries(lockInId?: string): Promise<Itinerary[]> {
+    return [...this.itineraries.values()]
+      .filter((it) => !lockInId || it.lockInId === lockInId)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+
+  async getItinerary(itineraryId: string): Promise<Itinerary> {
+    const found = this.itineraries.get(itineraryId);
+    if (!found) throw new Error(`no itinerary ${itineraryId}`);
+    return found;
+  }
+
+  async replaceItineraryStop(
+    itineraryId: string,
+    order: number,
+  ): Promise<ItineraryResult> {
+    const current = this.itineraries.get(itineraryId);
+    if (!current) throw new Error(`no itinerary ${itineraryId}`);
+    const swapped = replaceMockStop(current, order);
+    if (!swapped) {
+      // The stored plan comes back untouched beside the reason. Failing to
+      // find an alternative must not cost somebody the plan they had.
+      return {
+        itinerary: current,
+        reason: "Nothing else of that kind is open then. The plan is unchanged.",
+        dataUnavailable: false,
+      };
+    }
+    this.itineraries.set(itineraryId, swapped);
+    return { itinerary: swapped, reason: "", dataUnavailable: false };
+  }
+
+  async setItineraryStatus(
+    itineraryId: string,
+    status: "proposed" | "confirmed" | "cancelled",
+  ): Promise<Itinerary> {
+    const current = this.itineraries.get(itineraryId);
+    if (!current) throw new Error(`no itinerary ${itineraryId}`);
+    const next = { ...current, status, updatedAt: new Date().toISOString() };
+    this.itineraries.set(itineraryId, next);
+    return next;
+  }
+
+  async writeReflection(
+    itineraryId: string,
+    draft: ReflectionDraft,
+  ): Promise<Reflection> {
+    const reflection: Reflection = {
+      reflectionId: `refl-${itineraryId}`,
+      itineraryId,
+      lockInId: this.itineraries.get(itineraryId)?.lockInId ?? "",
+      overall: draft.overall,
+      ratings: draft.ratings,
+      secondDate: draft.secondDate,
+      notes: draft.notes,
+      createdAt: new Date().toISOString(),
+      privacyNote:
+        "Only you can see this. It is never shown to the person you met, and " +
+        "they are never told whether you filled it in.",
+    };
+    this.reflections.set(itineraryId, reflection);
+    const plan = this.itineraries.get(itineraryId);
+    if (plan) {
+      this.itineraries.set(itineraryId, { ...plan, status: "completed", hasReflection: true });
+    }
+    return reflection;
+  }
+
+  async getReflection(itineraryId: string): Promise<Reflection | null> {
+    return this.reflections.get(itineraryId) ?? null;
+  }
+
+  async forgetReflection(reflectionId: string): Promise<void> {
+    for (const [key, value] of this.reflections) {
+      if (value.reflectionId === reflectionId) {
+        this.reflections.delete(key);
+        const plan = this.itineraries.get(key);
+        if (plan) this.itineraries.set(key, { ...plan, hasReflection: false });
+      }
+    }
+  }
+
   async getDateMemory(lockInId?: string): Promise<DateMemory[]> {
     return this.memory.filter(
       (m) => m.scope === "user" || (lockInId ? m.lockInId === lockInId : false),
@@ -594,6 +769,37 @@ export class MockAdapter implements Adapter {
       existing.confidence = Math.min(existing.confidence + 0.2, 0.6);
     }
     existing.updatedAt = now;
+  }
+
+  async getSettings(): Promise<Settings> {
+    return { ...this.settings };
+  }
+
+  async updateSettings(patch: Partial<Settings>): Promise<Settings> {
+    this.settings = { ...this.settings, ...patch };
+    return { ...this.settings };
+  }
+
+  async getProfile(): Promise<EditableProfile> {
+    return { ...this.profile };
+  }
+
+  async updateProfile(
+    patch: Partial<EditableProfile>,
+  ): Promise<EditableProfile> {
+    // The same normalising the server does, so an edit behaves identically
+    // offline: trimmed, lower-cased, de-duplicated.
+    const clean = (values: string[] | undefined) =>
+      values === undefined
+        ? undefined
+        : [...new Set(values.map((v) => v.trim().toLowerCase()).filter(Boolean))];
+    this.profile = {
+      ...this.profile,
+      ...patch,
+      interests: clean(patch.interests) ?? this.profile.interests,
+      values: clean(patch.values) ?? this.profile.values,
+    };
+    return { ...this.profile };
   }
 
   async getLockIns(): Promise<LockIn[]> {
@@ -737,6 +943,8 @@ export class MockAdapter implements Adapter {
     this.memory = [];
     this.feedback = [];
     this.plans.clear();
+    this.itineraries.clear();
+    this.reflections.clear();
   }
 
   async forceOutcome(outcome: ConsentOutcome | null): Promise<void> {

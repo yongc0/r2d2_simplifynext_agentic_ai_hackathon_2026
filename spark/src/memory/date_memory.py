@@ -175,9 +175,14 @@ class DateMemoryStore:
                      past it, so one rejection nudges and repetition persuades.
                      A single no is not a permanent dislike.
 
-        An explicit statement also OVERWRITES an inferred one. Being told beats
+        An explicit statement OVERWRITES an inferred one. Being told beats
         having guessed, and a person who corrects Spark should not have to do it
         twice.
+
+        The reverse never happens. An inferred belief that disagrees with a
+        stated one is DISCARDED, not applied at low confidence: a preference
+        somebody typed is not something Spark gets to talk itself out of by
+        watching them.
         """
         now = now or datetime.now()
         memory_id = self._memory_id(owner_id, scope, lockin_id, dimension)
@@ -214,6 +219,19 @@ class DateMemoryStore:
             same_value = row["value"] == value
             if source == "explicit":
                 confidence = EXPLICIT_CONFIDENCE
+            elif row["source"] == "explicit" and not same_value:
+                # SOMETHING INFERRED MAY NEVER OVERWRITE SOMETHING CHOSEN.
+                #
+                # Behaviour that argues against a stated preference is not
+                # evidence the person changed their mind — they may have been
+                # accommodating somebody else, or trying something once. Letting
+                # it win would mean a person who typed "under $20" watches Spark
+                # quietly stop believing them, with no screen anywhere that says
+                # so and nothing to correct.
+                #
+                # The stated value stands, untouched. Changing it is a thing the
+                # person does, on the preferences screen, on purpose.
+                return self._to_item(row)
             elif not same_value:
                 # They did something that argues for a different value. Move
                 # toward it from a standing start rather than inheriting the

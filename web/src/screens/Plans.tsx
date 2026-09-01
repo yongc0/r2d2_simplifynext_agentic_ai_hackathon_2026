@@ -58,6 +58,13 @@ export default function Plans() {
         <p className="mt-1.5 text-sm leading-relaxed text-muted">
           Something to do with the people you have already met.
         </p>
+        <button
+          type="button"
+          onClick={() => navigate("/plans/history")}
+          className="mt-3 rounded-full bg-white/[0.07] px-3 py-1.5 text-xs text-text transition-colors hover:bg-white/[0.12]"
+        >
+          Your dates →
+        </button>
       </header>
 
       {error ? (

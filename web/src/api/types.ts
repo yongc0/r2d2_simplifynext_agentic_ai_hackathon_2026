@@ -308,3 +308,183 @@ export interface DemoPersona {
   interests: string[];
   availability: string[];
 }
+
+/**
+ * A DATE PLAN WITH REAL PLACES IN IT.
+ *
+ * The only shapes in this file that carry an address or a coordinate, and the
+ * only ones a map component may read. They are permitted for the reason
+ * `Dates.tsx` gives at length: an itinerary exists only after a mutual reveal,
+ * and the server that produced it was never told where either person has been.
+ * A destination two people chose together is not a disclosure of where either
+ * of them was.
+ */
+export interface TravelLeg {
+  minutes: number;
+  metres: number;
+  mode: "walking" | "transit";
+  /** Always true, and always rendered. See `detail`. */
+  estimated: boolean;
+  detail: string;
+}
+
+export interface ItineraryStop {
+  stopId: string;
+  /** 1-based. The map's numbered markers are this field. */
+  order: number;
+  activityType: "activity" | "food" | "drink";
+  venueId: string;
+  venueName: string;
+  /** `null` renders as "address not listed" — never as a guess. */
+  address: string | null;
+  lat: number;
+  lon: number;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+  estimatedCost: string;
+  costBand: string;
+  rationale: string;
+  /** `null` on the first stop, and only there. */
+  travelFromPrevious: TravelLeg | null;
+  /** A directions link that needs no API key. */
+  mapsUrl: string;
+  /**
+   * "unknown" is a THIRD state, not a soft "open". OpenStreetMap's hours
+   * coverage is patchy, and styling unknown as open is how a plan sends two
+   * people to a locked door.
+   */
+  openingState: "open" | "closed" | "unknown";
+  openingHours: string | null;
+  openingDetail: string;
+  isCommercialPartner: boolean;
+}
+
+export type ItineraryStatus =
+  | "draft"
+  | "proposed"
+  | "confirmed"
+  | "completed"
+  | "cancelled";
+
+export interface Itinerary {
+  itineraryId: string;
+  lockInId: string;
+  pathId: string;
+  headline: string;
+  timeBucket: string;
+  dayLabel: string;
+  stops: ItineraryStop[];
+  totalDurationMinutes: number;
+  totalCostEstimate: string;
+  groundedIn: string[];
+  status: ItineraryStatus;
+  note: string;
+  /** A licence condition. Every surface showing these venues renders it. */
+  attribution: string;
+  updatedAt: string;
+  /**
+   * Whether THIS viewer wrote a reflection. Never whether the other person
+   * did — that fact is itself a signal, and showing it would let somebody
+   * infer an answer they were never meant to see.
+   */
+  hasReflection: boolean;
+}
+
+/** An itinerary, or a stated reason there is not one. */
+export interface ItineraryResult {
+  itinerary: Itinerary | null;
+  reason: string;
+  /**
+   * True when the cause is missing venue data rather than an empty result.
+   * The two get different screens: only one of them is the user's to fix.
+   */
+  dataUnavailable: boolean;
+}
+
+/** Whether Spark has real venue data at all. Drives the unavailable state. */
+export interface PlacesStatus {
+  available: boolean;
+  count: number;
+  withHours: number;
+  source: string;
+  attribution: string;
+  note: string;
+}
+
+export type ReflectionAspect =
+  | "conversation"
+  | "location"
+  | "activity"
+  | "vibe"
+  | "comfort";
+
+/**
+ * The post-date form. PRIVATE.
+ *
+ * There is no field here naming the other person, no adapter method that reads
+ * somebody else's, and no screen that shows one. `secondDate` in particular is
+ * never surfaced to the person it is about — that is the only thing that makes
+ * an honest answer safe to give.
+ */
+export interface Reflection {
+  reflectionId: string;
+  itineraryId: string;
+  lockInId: string;
+  overall: number;
+  ratings: Partial<Record<ReflectionAspect, number>>;
+  secondDate: "yes" | "maybe" | "no";
+  notes: string;
+  createdAt: string;
+  /** Shown in the form, every time. An unstated promise is not a promise. */
+  privacyNote: string;
+}
+
+export interface ReflectionDraft {
+  overall: number;
+  ratings: Partial<Record<ReflectionAspect, number>>;
+  secondDate: "yes" | "maybe" | "no";
+  notes: string;
+}
+
+/**
+ * The switches a person actually controls.
+ *
+ * `allowCalls` is "Receive calls from Spark", and it is NOT a display setting.
+ * The server enforces it inside `spark-voice.connect_call`, the single place a
+ * call can be created, so turning it off stops calls happening rather than
+ * stopping the button being drawn. Hiding call UI alone would leave a code path
+ * that still rings somebody who asked not to be rung.
+ */
+export interface Settings {
+  allowCalls: boolean;
+  allowDateSuggestions: boolean;
+  allowContinuityNotes: boolean;
+  allowConversationPrompts: boolean;
+}
+
+/**
+ * The editable half of your own profile.
+ *
+ * NOT A UI-ONLY PREFERENCES PAGE. These are the fields the Match Agent reads:
+ * intents gate who you are eligible to meet, interests decide overlap scoring
+ * and ground every date plan, and the availability window decides which
+ * encounter slots you can be offered in at all.
+ *
+ * Note what is absent and must stay absent: height, appearance, photographs.
+ */
+export interface EditableProfile {
+  intents: string[];
+  interests: string[];
+  values: string[];
+  personality: string;
+  lifestyle: string;
+  languages: string[];
+  availabilityWindow: string[];
+  /**
+   * Times this person has genuinely been out in. Offered as the availability
+   * choices, because a window nobody is ever free in is a preference that
+   * quietly removes them from every pool.
+   */
+  knownBuckets: string[];
+}

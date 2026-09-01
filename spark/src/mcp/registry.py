@@ -10,8 +10,9 @@ which is where three things happen that must happen on *every* tool call:
   the outcome is recorded, which is the tool-call success rate (metric 2);
   a failure is re-raised with a message an operator can act on.
 
-`TOOLS` is also what the six server modules publish over MCP, so the catalogue
-a judge sees over stdio and the catalogue the simulation uses are one list.
+`TOOLS` is also what the seven server modules publish over MCP, so the
+catalogue a judge sees over stdio and the catalogue the simulation uses are one
+list.
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from src.mcp import services
+from src.mcp import places, services
 from src.mcp.services import ToolFailure
 from src.telemetry.metrics import METRICS
 from src.telemetry.trace import span
@@ -52,8 +53,8 @@ def _spec(server: str, fn: Callable[..., dict[str, Any]], description: str) -> T
     return ToolSpec(server=server, name=fn.__name__, fn=fn, description=description)
 
 
-#: The six servers and everything they expose. This is the architecture slide's
-#: bottom row, as data.
+#: The seven servers and everything they expose. This is the architecture
+#: slide's bottom row, as data.
 TOOLS: dict[str, list[ToolSpec]] = {
     "spark-overlap": [
         _spec(
@@ -124,6 +125,38 @@ TOOLS: dict[str, list[ToolSpec]] = {
         _spec("spark-sim", services.sim_users, "Every user id in the simulated world."),
         _spec("spark-sim", services.sim_stats, "Size of the simulated world."),
     ],
+    # Real venues, from OpenStreetMap, fetched once and committed. The only
+    # server that returns a coordinate — and the only one that is never told
+    # where a user is, which is what keeps it on the right side of invariant 3.
+    "spark-places": [
+        _spec(
+            "spark-places",
+            places.places_available,
+            "Whether real venue data is loaded, and how much of it has opening "
+            "hours. False means the planner shows an unavailable state; it "
+            "never invents a venue.",
+        ),
+        _spec(
+            "spark-places",
+            places.search_places,
+            "Venues matching shared interests, a budget and an energy level. "
+            "Takes no location and no user id, so it cannot rank by proximity "
+            "to anybody.",
+        ),
+        _spec(
+            "spark-places",
+            places.travel_between,
+            "A walking-time estimate between two coordinates. Labelled an "
+            "estimate everywhere it is shown; not a routed journey.",
+        ),
+        _spec(
+            "spark-places",
+            places.is_open_at,
+            "open / closed / unknown for a venue at an hour. Missing hours are "
+            "UNKNOWN, never assumed open — that is how a plan sends somebody "
+            "to a locked door.",
+        ),
+    ],
 }
 
 
@@ -162,7 +195,13 @@ class MCPClient:
 
     def call(self, server: str, tool: str, **arguments: Any) -> dict[str, Any]:
         spec = find(server, tool)
-        with span(f"mcp.{server}.{tool}", **{f"arg.{k}": v for k, v in arguments.items()}) as s:
+        # `None` is not a valid OTEL attribute value, and an optional argument
+        # left unset is the normal case rather than an error — dropping it keeps
+        # the trace readable instead of emitting a warning per call.
+        attributes = {
+            f"arg.{k}": v for k, v in arguments.items() if v is not None
+        }
+        with span(f"mcp.{server}.{tool}", **attributes) as s:
             try:
                 result = spec.fn(**arguments)
             except ToolFailure as exc:

@@ -222,6 +222,16 @@ class ConsentScope(BaseModel):
     allow_continuity_notes: bool = True
     allow_conversation_prompts: bool = False   # §13.5 is opt-in
     allow_date_suggestions: bool = True
+    #: "Receive calls from Spark". Default on, because the daily call IS the
+    #: product — but a person who turns it off must stop receiving them, not
+    #: merely stop seeing the button.
+    #:
+    #: Enforced in `spark-voice.connect_call`, the single place a call can be
+    #: created, in exactly the same shape as `both_accepted`: the bridge is
+    #: handed permission rather than looking it up, and refuses without it.
+    #: Hiding the UI alone would leave a code path that still rings somebody
+    #: who asked not to be rung.
+    allow_calls: bool = True
 
     def permits(self, field_name: str) -> bool:
         return field_name in self.matchable_fields

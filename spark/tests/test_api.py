@@ -1052,3 +1052,90 @@ def test_a_new_encounter_keeps_what_was_learned(client: TestClient) -> None:
     client.post("/api/demo/new-encounter")
     assert client.get("/api/date-memory").json(), "a new encounter wiped the memory"
     assert client.get("/api/lockins").json(), "a new encounter dropped the lock-in"
+
+
+# ---------------------------------------------------------------------------
+# "Receive calls from Spark"
+# ---------------------------------------------------------------------------
+#
+# The requirement is explicit that hiding the UI is not enough: any code that
+# tries to place a call must check first. So it is enforced at `connect_call`,
+# the single place a call can be created, and again in the Delivery Agent
+# before it even reaches the bridge.
+
+
+def test_calls_are_on_by_default(client: TestClient) -> None:
+    """The daily call IS the product. Off has to be a choice, not a default."""
+    assert client.get("/api/settings").json()["allowCalls"] is True
+
+
+def test_turning_calls_off_stops_the_call_happening(client: TestClient) -> None:
+    client.get("/api/settings")
+    client.put("/api/settings", json={"allowCalls": False})
+
+    eid = open_encounter(client)
+    body = respond(client, eid, True).json()
+    assert body["connected"] is False
+    assert body["state"] == "ABANDONED"
+
+
+def test_a_disabled_call_looks_exactly_like_a_no_show(client: TestClient) -> None:
+    """INVARIANT 2. A privacy setting must not become a signal about the person
+    who set it — the other party has to see what a no-show looks like."""
+    client.get("/api/settings")
+    client.put("/api/settings", json={"allowCalls": False})
+    disabled = respond(client, open_encounter(client), True).json()
+
+    other = TestClient(create_app())
+    other.post("/api/demo/reset")
+    declined = respond(other, open_encounter(other), False).json()
+
+    assert disabled == declined
+
+
+def test_turning_calls_back_on_restores_them(client: TestClient) -> None:
+    client.get("/api/settings")
+    client.put("/api/settings", json={"allowCalls": False})
+    client.put("/api/settings", json={"allowCalls": True})
+
+    body = respond(client, open_encounter(client), True).json()
+    assert body["connected"] is True
+
+
+def test_the_bridge_itself_refuses_not_just_the_agent(client: TestClient) -> None:
+    """Defence in depth. If a future caller forgets the check, the one place a
+    call can be created still will not make one."""
+    from src.mcp.registry import ToolFailure
+    from src.mcp.services import connect_call
+
+    with pytest.raises(ToolFailure, match="turned off calls"):
+        connect_call(
+            "enc-x", both_accepted=True,
+            started_at="2026-09-03T21:00:00", calls_allowed=False,
+        )
+
+
+def test_a_partial_update_leaves_other_settings_alone(client: TestClient) -> None:
+    """One screen toggling one switch must not silently reset the others."""
+    client.get("/api/settings")
+    client.put("/api/settings", json={"allowDateSuggestions": False})
+    client.put("/api/settings", json={"allowCalls": False})
+
+    settings = client.get("/api/settings").json()
+    assert settings["allowCalls"] is False
+    assert settings["allowDateSuggestions"] is False
+
+
+def test_settings_and_the_encounter_agree_about_who_you_are(
+    client: TestClient,
+) -> None:
+    """The bug this fixes: settings resolved the viewer one way and the
+    encounter another, so turning calls off turned them off for somebody else
+    and the call connected anyway. A preference applied to the wrong person is
+    worse than one not applied at all."""
+    session = get_session()
+    client.get("/api/settings")
+    viewer = session.viewer_user_id()
+
+    eid = open_encounter(client)
+    assert session.require_encounter(eid).user_a == viewer

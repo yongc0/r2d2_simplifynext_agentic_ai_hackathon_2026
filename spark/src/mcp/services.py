@@ -275,17 +275,35 @@ def forget_notes(owner_id: str, lockin_id: str | None = None) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def connect_call(encounter_id: str, both_accepted: bool, started_at: str) -> dict[str, Any]:
+def connect_call(
+    encounter_id: str,
+    both_accepted: bool,
+    started_at: str,
+    calls_allowed: bool = True,
+) -> dict[str, Any]:
     """Bridge two anonymous legs, and stop at 180 seconds. INVARIANT 4.
 
     The duration is not a parameter. A caller cannot request 200 seconds, and
     there is no argument that extends a call — the cap is read from config and
     applied here, at the one place a call can be created.
 
-    `both_accepted` is handed in rather than looked up: this server does not
-    decide consent, it refuses to act without it (INVARIANT 6).
+    `both_accepted` and `calls_allowed` are both handed in rather than looked
+    up: this server does not decide consent or preferences, it refuses to act
+    without them (INVARIANT 6).
+
+    `calls_allowed` is "Receive calls from Spark", and it is checked HERE rather
+    than only in the interface. A toggle that hides a button leaves the code
+    path that rings somebody intact; a toggle checked at the one place a call
+    can be created does not.
     """
     WORLD._voice_attempts += 1
+    if not calls_allowed:
+        raise ToolFailure(
+            f"spark-voice refused to connect encounter {encounter_id}: one of "
+            "the participants has turned off calls from Spark. This is a "
+            "setting, not a fault — do not retry, and do not tell the other "
+            "party why the call did not happen."
+        )
     if not both_accepted:
         raise ToolFailure(
             f"spark-voice refused to connect encounter {encounter_id}: the bridge "

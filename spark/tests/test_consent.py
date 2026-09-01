@@ -333,13 +333,37 @@ def test_duration_is_not_a_parameter_of_the_bridge():
 
     Checked on the signature, because the day someone adds `duration_s=` is the
     day the invariant becomes a suggestion.
+
+    TWO ASSERTIONS, and the second is the one that matters. The allowlist
+    catches ANY new parameter and forces whoever added it to come here and
+    justify it — that is the test doing its job, not an obstacle. The name check
+    below states the actual invariant, so widening the list can never quietly
+    admit a duration.
+
+    `calls_allowed` was added deliberately, in the same shape as
+    `both_accepted`: the bridge is handed permission and refuses without it,
+    rather than looking it up. It is "receive calls from Spark" enforced at the
+    one place a call can be created, so turning the setting off removes the
+    capability instead of hiding a button.
     """
     import inspect
 
     from src.mcp.services import connect_call
 
     parameters = set(inspect.signature(connect_call).parameters)
-    assert parameters == {"encounter_id", "both_accepted", "started_at"}
+    assert parameters == {
+        "encounter_id",
+        "both_accepted",
+        "started_at",
+        "calls_allowed",
+    }
+
+    # The invariant itself, independent of the list above.
+    for name in parameters:
+        assert not any(
+            word in name.lower()
+            for word in ("duration", "seconds", "length", "extend", "minutes")
+        ), f"{name!r} looks like it could ask for a longer call"
 
 
 def test_the_bridge_refuses_without_dual_acceptance(client, encounter):

@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
 import { getAdapter } from "../api/adapter";
+import { PlanTheDateButton } from "../components/PlanTheDateButton";
 import { Avatar } from "../components/Avatar";
 import type { ContinuityBrief, LockIn } from "../api/types";
 import { NAV_HEIGHT_CLASS } from "../components/AppNav";
@@ -141,6 +142,16 @@ function Slot({
             ) : null}
           </div>
           <p className="text-xs text-muted">{connectedLabel(lockIn)}</p>
+
+          {/* One tap to a real plan, on every live connection — not only the
+              ones the Continuity Agent happened to write a brief for. The
+              button already knows who this is, so it asks nothing: everything
+              the planner needs is on the lock-in the server is holding. */}
+          {!released ? (
+            <div className="mt-3">
+              <PlanTheDateButton lockInId={lockIn.lockInId} />
+            </div>
+          ) : null}
 
           {brief ? (
             <div className="mt-3 border-l-2 border-accent/40 pl-3">

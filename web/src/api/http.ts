@@ -26,9 +26,16 @@ import type {
   DemoPersona,
   DatePlan,
   DatePreferences,
+  EditableProfile,
   EncounterCard,
+  Itinerary,
+  ItineraryResult,
+  PlacesStatus,
   PlanLockIn,
+  Reflection,
+  ReflectionDraft,
   RejectionReason,
+  Settings,
   LockIn,
   OnboardingTurn,
   RevealedPerson,
@@ -195,6 +202,91 @@ export class HttpAdapter implements Adapter {
     });
   }
 
+  // --- Itineraries -----------------------------------------------------
+
+  async getPlacesStatus(): Promise<PlacesStatus> {
+    return call<PlacesStatus>("/places/status");
+  }
+
+  async createItinerary(
+    lockInId: string,
+    preferences: Partial<DatePreferences> & {
+      remember?: boolean;
+      pathId?: string;
+    },
+  ): Promise<ItineraryResult> {
+    return call<ItineraryResult>(
+      `/lockins/${encodeURIComponent(lockInId)}/itineraries`,
+      { method: "POST", body: JSON.stringify(preferences) },
+    );
+  }
+
+  async getItineraries(lockInId?: string): Promise<Itinerary[]> {
+    const query = lockInId ? `?lockInId=${encodeURIComponent(lockInId)}` : "";
+    return call<Itinerary[]>(`/itineraries${query}`);
+  }
+
+  async getItinerary(itineraryId: string): Promise<Itinerary> {
+    return call<Itinerary>(`/itineraries/${encodeURIComponent(itineraryId)}`);
+  }
+
+  async replaceItineraryStop(
+    itineraryId: string,
+    order: number,
+  ): Promise<ItineraryResult> {
+    return call<ItineraryResult>(
+      `/itineraries/${encodeURIComponent(itineraryId)}/stops/${order}/replace`,
+      { method: "POST" },
+    );
+  }
+
+  async setItineraryStatus(
+    itineraryId: string,
+    status: "proposed" | "confirmed" | "cancelled",
+  ): Promise<Itinerary> {
+    return call<Itinerary>(
+      `/itineraries/${encodeURIComponent(itineraryId)}/status`,
+      { method: "PUT", body: JSON.stringify({ status }) },
+    );
+  }
+
+  async writeReflection(
+    itineraryId: string,
+    draft: ReflectionDraft,
+  ): Promise<Reflection> {
+    return call<Reflection>(
+      `/itineraries/${encodeURIComponent(itineraryId)}/reflection`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          overall: draft.overall,
+          ratings: draft.ratings,
+          secondDate: draft.secondDate,
+          notes: draft.notes,
+        }),
+      },
+    );
+  }
+
+  async getReflection(itineraryId: string): Promise<Reflection | null> {
+    try {
+      return await call<Reflection>(
+        `/itineraries/${encodeURIComponent(itineraryId)}/reflection`,
+      );
+    } catch (cause) {
+      // 404 means "you have not written one", which is the normal state for
+      // every date nobody has reflected on yet — not an error to surface.
+      if (cause instanceof HttpError && cause.status === 404) return null;
+      throw cause;
+    }
+  }
+
+  async forgetReflection(reflectionId: string): Promise<void> {
+    await call(`/reflections/${encodeURIComponent(reflectionId)}`, {
+      method: "DELETE",
+    });
+  }
+
   async getDateMemory(lockInId?: string): Promise<DateMemory[]> {
     const query = lockInId ? `?lockInId=${encodeURIComponent(lockInId)}` : "";
     return call<DateMemory[]>(`/date-memory${query}`);
@@ -209,6 +301,32 @@ export class HttpAdapter implements Adapter {
 
   async forgetDateMemory(memoryId: string): Promise<void> {
     await call(`/date-memory/${memoryId}`, { method: "DELETE" });
+  }
+
+  // --- Settings and profile --------------------------------------------
+
+  async getSettings(): Promise<Settings> {
+    return call<Settings>("/settings");
+  }
+
+  async updateSettings(patch: Partial<Settings>): Promise<Settings> {
+    return call<Settings>("/settings", {
+      method: "PUT",
+      body: JSON.stringify(patch),
+    });
+  }
+
+  async getProfile(): Promise<EditableProfile> {
+    return call<EditableProfile>("/profile");
+  }
+
+  async updateProfile(
+    patch: Partial<EditableProfile>,
+  ): Promise<EditableProfile> {
+    return call<EditableProfile>("/profile", {
+      method: "PUT",
+      body: JSON.stringify(patch),
+    });
   }
 
   async getLockIns(): Promise<LockIn[]> {

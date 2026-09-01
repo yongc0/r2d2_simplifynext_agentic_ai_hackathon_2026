@@ -35,6 +35,7 @@ from datetime import timedelta
 
 from langgraph.types import interrupt
 
+from src.agents.delivery import CallsDisabled
 from src.graph.state import EncounterGraphState, SparkRuntime
 from src.ids import lockin_id as make_lockin_id
 from src.mcp.registry import ToolError
@@ -278,6 +279,25 @@ def make_call_node(runtime: SparkRuntime):
             started = runtime.clock.at(19, 0)
             try:
                 ended, duration = runtime.delivery.connect(encounter, started)
+            except CallsDisabled:
+                # A setting, not a fault. The encounter ends exactly as a
+                # no-show does, because the other party must not be able to
+                # tell that somebody has calls switched off — that would make a
+                # privacy setting into a signal about the person who set it.
+                encounter.transition_to(EncounterState.ABANDONED)
+                s.set_attribute("outcome", "calls disabled")
+                METRICS.record_task_completion(
+                    reached_gate=False,
+                    detail=(
+                        f"encounter {encounter.id} did not reach the consent "
+                        "gate: a participant has calls turned off."
+                    ),
+                )
+                return {
+                    "encounter": encounter,
+                    "terminal_reason": "calls are turned off for a participant",
+                    "trail": ["ABANDONED — no call was placed"],
+                }
             except ToolError as exc:
                 # The bridge failed. The encounter is abandoned and BOTH people
                 # see the same nothing they would have seen if the other had

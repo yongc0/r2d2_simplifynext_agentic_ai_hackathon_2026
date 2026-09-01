@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { getAdapter } from "../api/adapter";
 import { NAV_HEIGHT_CLASS } from "../components/AppNav";
+import { SettingsPanel } from "../components/SettingsPanel";
 import { KNOWN_INTERESTS, KNOWN_VALUES } from "../api/extract";
 import type { ChipKind, Intent, ProfileChip } from "../api/types";
-import { intentLabel } from "../api/wire";
+import { intentLabel, intentValue } from "../api/wire";
 import { useSpark } from "../store/useSpark";
 
 /**
@@ -25,15 +27,22 @@ import { useSpark } from "../store/useSpark";
  * list below is the fixed vocabulary from `extract.ts`, so a physical attribute
  * cannot be typed in either: there is nothing to type into.
  *
- * WHAT THIS IS HONEST ABOUT: with no auth, a profile lives in this session.
- * There is nobody to save it to. The screen says so rather than implying a
- * durable account, which would be the first lie the product told.
+ * IT IS NOT A UI-ONLY PREFERENCES PAGE. Every edit here is written through to
+ * the same `Profile` the Match Agent reads, so changing an interest changes the
+ * overlap scoring on the next encounter and the grounding of the next date
+ * plan. A settings screen whose switches only move pixels is worse than none:
+ * it teaches people that saying what they want does not work.
+ *
+ * WHAT THIS IS STILL HONEST ABOUT: there is no sign-in, so "your" profile is
+ * whichever persona this session is following, and it lives as long as the
+ * server process does. The screen says so rather than implying an account.
  */
 export default function Profile() {
   const navigate = useNavigate();
   const chips = useSpark((s) => s.chips);
   const setChips = useSpark((s) => s.setChips);
   const [editing, setEditing] = useState<ChipKind | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const has = (kind: ChipKind, label: string) =>
     chips.some((c) => c.kind === kind && c.label === label);
@@ -56,6 +65,44 @@ export default function Profile() {
 
   const byKind = (kind: ChipKind) => chips.filter((c) => c.kind === kind);
   const intentChip = byKind("intent")[0];
+
+  /**
+   * Push edits to the server, so they change matching rather than only the
+   * screen.
+   *
+   * Skipped on the first render: mounting is not an edit, and writing the
+   * store's copy back on arrival would overwrite a profile the server already
+   * holds with whatever this session happened to have.
+   *
+   * A failure is SHOWN. Silently dropping a preference is the worst outcome
+   * available here — the person believes it took, and Spark keeps matching them
+   * on the old answer with no way for them to tell.
+   */
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    if (chips.length === 0) return;
+    const intent = chips.find((c) => c.kind === "intent");
+    void getAdapter()
+      .updateProfile({
+        ...(intent ? { intents: [intentValue(intent.label)] } : {}),
+        interests: chips
+          .filter((c) => c.kind === "interest")
+          .map((c) => c.label.toLowerCase()),
+        values: chips
+          .filter((c) => c.kind === "value")
+          .map((c) => c.label.toLowerCase()),
+      })
+      .then(() => setSaveError(null))
+      .catch((cause: unknown) =>
+        setSaveError(
+          cause instanceof Error ? cause.message : String(cause),
+        ),
+      );
+  }, [chips]);
 
   return (
     <div className={`no-scrollbar h-full overflow-y-auto px-6 pt-16 ${NAV_HEIGHT_CLASS}`}>
@@ -141,13 +188,8 @@ export default function Profile() {
             has={(label) => has("value", label)}
           />
 
-          {/* --- availability and languages, read-only for now ------------ */}
-          {byKind("availability").length > 0 ? (
-            <Section title="When you are usually free">
-              <ChipRow chips={byKind("availability")} />
-            </Section>
-          ) : null}
-
+          {/* Availability is editable, and lives with the other settings that
+              genuinely change what the system does — see `SettingsPanel`. */}
           {byKind("language").length > 0 ? (
             <Section title="Languages">
               <ChipRow chips={byKind("language")} />
@@ -161,6 +203,8 @@ export default function Profile() {
             <></>
           </Section>
 
+          <SettingsPanel />
+
           <button
             type="button"
             onClick={() => navigate("/onboarding")}
@@ -169,9 +213,16 @@ export default function Profile() {
             Go through the questions again
           </button>
 
+          {saveError ? (
+            <p role="alert" className="text-[11px] leading-relaxed text-rose-300">
+              That change was not saved: {saveError}
+            </p>
+          ) : null}
+
           {/* Honest about where this lives. */}
           <p className="text-center text-[11px] leading-relaxed text-muted/70">
-            There is no sign-in yet, so this profile lives in this session only.
+            These preferences change how Spark matches and plans for you. There
+            is no sign-in yet, so they last as long as the session does.
           </p>
         </div>
       )}

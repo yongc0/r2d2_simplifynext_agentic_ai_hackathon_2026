@@ -37,6 +37,7 @@ from src.graph.supervisor import build_encounter_graph, pending_gate, sqlite_che
 from src.ids import encounter_id
 from src.mcp.registry import MCPClient
 from src.memory.date_memory import DateMemoryStore
+from src.memory.itineraries import ItineraryStore
 from src.mcp.services import WORLD
 from src.safety.consent import ConsentLedger, reveal_permitted
 from src.safety.trust import TrustAndSafety
@@ -243,6 +244,10 @@ class SparkSession:
         # reset, because a preference learned in rehearsal would quietly change
         # the ranking on camera.
         self.date_memory = DateMemoryStore(SETTINGS.checkpoint_db)
+        # Plans and the private reflections written after them. Same file, same
+        # reasoning; separate store because reflections are one person's and the
+        # read paths must not be able to forget that.
+        self.itineraries = ItineraryStore(SETTINGS.checkpoint_db)
 
         # Durable, so the consent gate survives a restart. `runs/` is gitignored.
         saver, conn = sqlite_checkpointer(SETTINGS.checkpoint_db)
@@ -520,6 +525,31 @@ class SparkSession:
                 )
         return out
 
+    def viewer_user_id(self) -> str:
+        """WHO THIS SESSION IS. One answer, used by everything.
+
+        There is no auth, so "you" is a property of the session — and it has to
+        resolve the same way everywhere or the app disagrees with itself. It
+        did: the settings screen fell back to the first user in the world while
+        the encounter used whichever starter the search landed on, so turning
+        off calls turned them off for somebody else and the call connected
+        anyway. A preference that silently applies to the wrong person is worse
+        than one that does not apply at all.
+
+        Resolution order, most specific first:
+          the open encounter -> the persona an operator chose -> the search.
+        """
+        if self._current_eid is not None:
+            encounter = self._encounters.get(self._current_eid)
+            if encounter is not None:
+                return encounter.user_a
+        if self.preferred_starter is not None:
+            return self.preferred_starter
+        # Resolve once and remember, so every later read agrees with the
+        # encounter that gets opened.
+        self.preferred_starter = self._first_user_with_a_candidate()
+        return self.preferred_starter
+
     def act_as(self, user_id: str) -> None:
         """Follow this person's day from now on.
 
@@ -628,6 +658,7 @@ class SparkSession:
             self._lockins.clear()
             # Recorded takes must be deterministic.
             DateMemoryStore(SETTINGS.checkpoint_db).clear()
+            ItineraryStore(SETTINGS.checkpoint_db).clear()
             self.day_offset_extra = 0
             self.preferred_starter = None
             self.forced_peer_answer = None

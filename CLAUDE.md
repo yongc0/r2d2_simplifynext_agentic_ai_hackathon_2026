@@ -55,13 +55,20 @@ uv run -m src.cli.encounter --seed 42    # one encounter, verbose trace
 uv run -m eval.run_arms                  # Spark vs random vs similarity
 uv run -m eval.report                    # emits metric tables for the slides
 
+# Real venues for the date planner. ONE-OFF, needs network, run in this order.
+# Everything downstream reads the committed file and never calls out again.
+# Until they are run, the planner shows its "no venue data" state and invents
+# nothing — which is correct behaviour, not a bug.
+uv run python scripts/fetch_venues.py          # OpenStreetMap -> data/venues_osm.json
+uv run python scripts/export_venues_for_web.py # -> web/src/api/venues.generated.ts
+
 uv run -m src.api                        # the HTTP API on :8000
-uv run pytest                            # all tests (279 passed, 1 skipped)
+uv run pytest                            # all tests (329 passed, 1 skipped)
 uv run pytest tests/test_consent.py -v   # the invariants — run before every commit
 
 cd ../web                                # the demo client
 npm install && npm run dev               # :5173, no backend needed
-npm test                                 # UI invariants 1-7 (220 passed)
+npm test                                 # UI invariants 1-7 (231 passed)
 ```
 
 Running both together, and what is still stubbed: `docs/PILOT.md`.
@@ -75,7 +82,7 @@ spark/
   src/
     graph/      LangGraph supervisor, nodes, state machine
     agents/     one module per agent
-    mcp/        the six MCP servers
+    mcp/        the seven MCP servers
     api/        the HTTP layer — a thin wrapper over the graph, not a second one
     schemas/    pydantic models — every agent output has one
     telemetry/  OTEL setup, metric collectors

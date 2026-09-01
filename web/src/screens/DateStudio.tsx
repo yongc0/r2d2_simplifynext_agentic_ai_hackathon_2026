@@ -5,7 +5,9 @@ import { getAdapter } from "../api/adapter";
 import { NAV_HEIGHT_CLASS } from "../components/AppNav";
 import { DateMemoryPanel } from "../components/DateMemoryPanel";
 import { DatePlanCard } from "../components/DatePlanCard";
+import { ItineraryView } from "../components/ItineraryView";
 import type {
+  Itinerary,
   Budget,
   DateMemory,
   DatePath,
@@ -35,6 +37,16 @@ import type {
  * plan with a reason regardless of what the client does.
  */
 
+/**
+ * Turning one of the three shapes into a real evening.
+ *
+ * The plans above are the SHAPE — "a gallery, then somewhere to eat" — ranked
+ * from what these two have in common and what this person has told Spark to
+ * remember. Binding one to real venues, addresses and clock times is a second
+ * step, and it is separate for the reason ARCHITECTURE §13.6 gives: the ranking
+ * runs over a catalogue with no location field, and only the binding sees a
+ * coordinate. Neither half can see what the other must not.
+ */
 const MOODS: [Mood, string][] = [
   ["easy", "Easy"],
   ["playful", "Playful"],
@@ -66,6 +78,52 @@ export default function DateStudio() {
   const [remember, setRemember] = useState(false);
   const [paths, setPaths] = useState<DatePath[] | null>(null);
   const [note, setNote] = useState("");
+  /** Plans bound to real venues, by the path they came from. */
+  const [itineraries, setItineraries] = useState<Record<string, Itinerary>>({});
+  const [binding, setBinding] = useState<string | null>(null);
+  const [bindingProblem, setBindingProblem] = useState<Record<string, string>>(
+    {},
+  );
+
+  /**
+   * Bind one shape to real places and times.
+   *
+   * A refusal is SHOWN rather than swallowed, and the two refusals are
+   * different facts: "Spark has no venue data" is not the user's to fix, and
+   * "nothing that fits is open then" is. Rendering either as an empty space
+   * would leave somebody tapping a button that appears to do nothing.
+   */
+  const makeItReal = async (pathId: string) => {
+    setBinding(pathId);
+    setBindingProblem((current) => ({ ...current, [pathId]: "" }));
+    try {
+      // The SAME constraints the plans were ranked under. Binding under
+      // different ones would hand back an evening that no longer matches the
+      // card the person tapped.
+      const result = await getAdapter().createItinerary(lockInId, {
+        mood: prefs?.mood,
+        budget: prefs?.budget,
+        duration: prefs?.duration,
+        energy: prefs?.energy,
+        formats: prefs?.formats,
+        timeBucket: prefs?.timeBucket,
+        pathId,
+      });
+      if (result.itinerary) {
+        setItineraries((current) => ({ ...current, [pathId]: result.itinerary! }));
+      } else {
+        setBindingProblem((current) => ({ ...current, [pathId]: result.reason }));
+      }
+    } catch (cause) {
+      setBindingProblem((current) => ({
+        ...current,
+        [pathId]: cause instanceof Error ? cause.message : String(cause),
+      }));
+    } finally {
+      setBinding(null);
+    }
+  };
+
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [memory, setMemory] = useState<DateMemory[]>([]);
   const [busy, setBusy] = useState(false);
@@ -248,14 +306,51 @@ export default function DateStudio() {
         {paths !== null ? (
           <section className="flex flex-col gap-3">
             {paths.map((path, i) => (
-              <DatePlanCard
-                key={path.pathId}
-                path={path}
-                index={i}
-                saved={saved.has(path.pathId)}
-                onSave={() => feedback(path.pathId, "saved")}
-                onReject={(reasons) => feedback(path.pathId, "rejected", reasons)}
-              />
+              <div key={path.pathId} className="flex flex-col gap-3">
+                <DatePlanCard
+                  path={path}
+                  index={i}
+                  saved={saved.has(path.pathId)}
+                  onSave={() => feedback(path.pathId, "saved")}
+                  onReject={(reasons) =>
+                    feedback(path.pathId, "rejected", reasons)
+                  }
+                />
+
+                {itineraries[path.pathId] ? (
+                  <div className="rounded-card bg-surface px-4 py-4 ring-1 ring-white/[0.06] ring-inset">
+                    <ItineraryView
+                      itinerary={itineraries[path.pathId]}
+                      onChange={(next) =>
+                        setItineraries((current) => ({
+                          ...current,
+                          [path.pathId]: next,
+                        }))
+                      }
+                    />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={binding === path.pathId}
+                    onClick={() => makeItReal(path.pathId)}
+                    className="self-start rounded-pill bg-accent/20 px-4 py-2 text-xs text-accent-soft ring-1 ring-accent/25 ring-inset transition-colors hover:bg-accent/30 disabled:opacity-50"
+                  >
+                    {binding === path.pathId
+                      ? "Finding places…"
+                      : "Turn this into a plan"}
+                  </button>
+                )}
+
+                {bindingProblem[path.pathId] ? (
+                  <p
+                    role="status"
+                    className="rounded-card bg-surface px-4 py-3 text-xs leading-relaxed text-muted ring-1 ring-white/[0.06] ring-inset"
+                  >
+                    {bindingProblem[path.pathId]}
+                  </p>
+                ) : null}
+              </div>
             ))}
             {paths.length === 0 || note ? (
               // Never pad the list; say why it is short.

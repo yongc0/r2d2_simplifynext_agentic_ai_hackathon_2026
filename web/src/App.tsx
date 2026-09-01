@@ -10,6 +10,7 @@ import { DirectorPanel, useDirectorHotkey } from "./components/DirectorPanel";
 import { useSpark } from "./store/useSpark";
 import Call from "./screens/Call";
 import Consent from "./screens/Consent";
+import DateHistory from "./screens/DateHistory";
 import DateStudio from "./screens/DateStudio";
 import Dates from "./screens/Dates";
 import Plans from "./screens/Plans";
@@ -67,6 +68,10 @@ export default function App() {
         {/* Date Studio (§13.6). Post-reveal only — the screens guard on the
             store and the server refuses with 409 regardless. */}
         <Route path="/plans" element={<Plans />} />
+        {/* Static before dynamic: `/plans/history` must not be read as a
+            lock-in id. React Router ranks it correctly, and the order here
+            says so to anyone reading. */}
+        <Route path="/plans/history" element={<DateHistory />} />
         <Route path="/plans/:lockInId" element={<DateStudio />} />
         {/* Kept as a compatibility route into the same feature. There is one
             implementation; this is a way in, not a second one. */}

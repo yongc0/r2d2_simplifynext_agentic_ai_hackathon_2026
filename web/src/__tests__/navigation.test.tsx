@@ -266,10 +266,16 @@ describe("/profile", () => {
   it("says where the profile actually lives", async () => {
     // No auth, so there is nobody to save it to. Implying a durable account
     // would be the first lie the product told.
+    //
+    // The claim got STRONGER when preferences started being written through to
+    // the matcher, and it has to stay honest in both directions now: the screen
+    // must say that the settings do something, and must still not imply an
+    // account that outlives the session.
     useSpark.getState().setChips([{ kind: "interest", label: "Coffee" }]);
     renderAt("/profile");
     expect(
-      await screen.findByText(/lives in this session only/i),
+      await screen.findByText(/how spark matches and plans for you/i),
     ).toBeInTheDocument();
+    expect(screen.getByText(/no sign-in yet/i)).toBeInTheDocument();
   });
 });

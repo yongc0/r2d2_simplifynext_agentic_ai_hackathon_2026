@@ -29,6 +29,7 @@ from datetime import datetime
 
 from src.config import SETTINGS
 from src.mcp.registry import MCPClient
+from src.mcp.services import WORLD
 from src.safety.consent import (
     ConsentLedger,
     accept_window_closes,
@@ -58,6 +59,16 @@ from src.schemas.views import (
 from src.telemetry.trace import span
 
 AGENT_CLASS = "Transaction"
+
+
+class CallsDisabled(Exception):
+    """A participant has turned off calls from Spark.
+
+    Deliberately NOT a `DeliveryRefused`, which means "the caller has a bug and
+    should be fixed". This is a person exercising a setting, and the graph must
+    end the encounter quietly rather than raise: from the other side it has to
+    be indistinguishable from a no-show (INVARIANT 2).
+    """
 
 
 class DeliveryRefused(Exception):
@@ -158,11 +169,31 @@ class EncounterDelivery:
                     "must have accepted first. This is a caller bug — the graph "
                     "should have routed to ABANDONED."
                 )
+            # Both people, not just the viewer: a call has two ends, and one
+            # person opting out is enough to stop it. Checked before the tool
+            # call as well as inside it — the bridge is the lock, this is the
+            # door not being opened in the first place.
+            blocked = [
+                uid
+                for uid in encounter.participants()
+                if uid in WORLD.users
+                and not WORLD.users[uid].consent_scope.allow_calls
+            ]
+            if blocked:
+                s.set_attribute("calls_disabled", len(blocked))
+                raise CallsDisabled(
+                    f"refusing to connect encounter {encounter.id}: calls from "
+                    "Spark are turned off for a participant. The encounter ends "
+                    "quietly, and the other party is told nothing that would "
+                    "distinguish this from a no-show (INVARIANT 2)."
+                )
+
             result = self.client.call(
                 "spark-voice",
                 "connect_call",
                 encounter_id=encounter.id,
                 both_accepted=True,
+                calls_allowed=True,
                 started_at=started_at.isoformat(),
             )
             duration = int(result["duration_s"])

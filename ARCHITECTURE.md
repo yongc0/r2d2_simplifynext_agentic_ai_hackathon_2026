@@ -70,7 +70,7 @@ The organisers' taxonomy. Agents may belong to several classes.
 |---|---|---|
 | **Information** — Answer & Advise | Retrieve, summarise or explain | — |
 | **Extraction** — Parse & Transform | Convert unstructured content into structured, actionable data | Onboarding |
-| **Transaction** — Do & Automate | Perform tasks on behalf of the user by integrating with systems | Encounter Delivery, Date |
+| **Transaction** — Do & Automate | Perform tasks on behalf of the user by integrating with systems | Encounter Delivery, Date, Itinerary |
 | **Decision-Support** — Guide & Recommend | Help with choices by analysing data and recommending actions | Match, Date |
 | **Creative / Generative** — Create & Draft | Produce new content based on user intent | Communication |
 | **Orchestration** — Coordinate & Integrate | Combine multiple systems and flows as a control tower | Supervisor |
@@ -182,19 +182,23 @@ Their guidance on where each is evidenced:
                                       │
    ┌──────────┬───────────┬───────────┼───────────┬───────────┬──────────┐
    ▼          ▼           ▼           ▼           ▼           ▼          ▼
-Onboarding  Match    Encounter   Continuity  Communication  Date    Guardian
- (Extract) (Decision) Delivery   (Personal-   (Generative)  (Dec.     (Embedded)
-            Support) (Transaction)  ized)                   Support)
+Onboarding  Match   Encounter  Continuity  Communication  Date   Itinerary  Guardian
+ (Extract) (Decision) Delivery  (Personal-  (Generative)   (Dec.  (Transac-  (Embedded)
+            Support) (Transac-    ized)                   Support)  tion)
+                       tion)
                                       │
                             Trust & Safety (cross-cutting)
                                       │
                                      MCP
-    ┌────────────┬────────────┬───────┴────┬────────────┬────────────┐
-    ▼            ▼            ▼            ▼            ▼            ▼
-spark-overlap spark-profile spark-voice spark-calendar spark-venue spark-sim
- (coarse cell  (AgentCore   (anonymous  (availability) (date       (personas,
-  + time)       Memory)      bridge)                    options)    eval arms)
+    ┌──────────┬──────────┬──────┴───┬──────────┬──────────┬──────────┐
+    ▼          ▼          ▼          ▼          ▼          ▼          ▼
+spark-overlap spark-profile spark-voice spark-calendar spark-venue spark-sim spark-places
+ (coarse cell  (AgentCore   (anonymous  (availability) (date       (personas,  (real venues,
+  + time)       Memory)      bridge)                    options)    eval arms)  OpenStreetMap)
 ```
+
+`spark-places` is the only server that returns a coordinate, and the only one
+that is never told who is asking — see §13.9.
 
 ## 13. Agent specifications
 
@@ -262,7 +266,9 @@ Three rather than one because "we should meet sometime" is where most of these c
 - **When** — planning runs on a `LockIn`, which exists only after a mutual reveal. Two people who have exchanged names and are choosing where to meet are picking a destination together; that is not a disclosure of where either of them was. Enforced on both sides: `GET /api/encounters/{id}/dates` returns `409` before a mutual yes, and the `/dates` screen redirects without one.
 - **What** — `suggest_venues` is never given a cell, a coordinate, a distance, or either person's overlap history. It ranks on shared interests and time of day alone. There is no location field on a venue record or on `DateStop`, so "near where you both were" cannot be assembled. `tests/test_date.py` asserts both structurally, against the function signature and the record keys, because this is the one feature where that inference could arrive legitimately-looking.
 
-Venues are **kinds of place** — "a hawker centre, one dish each and swap" — never named businesses. None of them exist; naming a real restaurant in a demo built on synthetic people would be inventing a recommendation about a real business.
+Venues at this stage are **kinds of place** — "a hawker centre, one dish each and swap" — never named businesses. `DateStop` has no field for a name, an address or a coordinate, so the ranking cannot see one.
+
+Naming a real place is a **separate step, by a separate agent**, and only after this one has decided the shape of the evening. See §13.9. The split is what keeps the reconciliation above true: the half that ranks cannot read a location, and the half that reads locations does no ranking about people.
 
 A path that cannot cite an interest **both** people listed is not built, for the same reason the Communication Agent may not invent a shared interest. When there is nothing to work with the agent returns an empty plan and says why, so a short list reads as a fact about the pair rather than as a failure.
 
@@ -297,6 +303,30 @@ The closure is written **before** the person is told anything, so the endpoint c
 ### 13.8 Trust & Safety — `DETERMINISTIC + GUARDRAILS` · cross-cutting
 
 Screens onboarding text and post-reveal messages for harassment, sexual content, scam patterns, and attempts to route around the consent gate. Enforces cooldowns, blocks and reports. All generated user-facing strings pass Bedrock Guardrails before rendering; failures are logged, never silently dropped.
+
+### 13.9 Itinerary — `DETERMINISTIC` · *Transaction*
+
+Turns one ranked `DatePath` into a plan two people can follow: **named venues, addresses, clock times, walking legs between the stops, a cost estimate and a reason for each choice**. One coherent evening, not a list of suggestions somebody has to assemble.
+
+**Why it is a separate agent from Date.** Because only one of the two is allowed near a coordinate. The Date Agent *ranks*, from shared interests and remembered preferences, over a catalogue with no location field. This agent *binds*, from a catalogue that has coordinates and has never been told where either person is or has been. Keeping them apart makes "near where you both were" **unbuildable rather than merely unbuilt**: there is no call site anywhere holding both an overlap cell and a venue coordinate.
+
+**Where the venues come from.** OpenStreetMap, fetched once by `scripts/fetch_venues.py` and committed. Never a live call — a demo that queries a public API on stage fails when the wifi does, and a plan that changes between takes cannot be filmed twice.
+
+These are **real businesses that Spark has not visited or evaluated**, and nothing in the product implies otherwise. There is no field anywhere for a rating, a review count or a "recommended" flag. Attribution — "© OpenStreetMap contributors" — is rendered wherever venues appear, which is a licence condition rather than a courtesy.
+
+**What it refuses to do.**
+
+- **Invent a venue.** With no data loaded it returns a typed refusal with a reason and the interface shows an unavailable state. A fabricated address is a real person standing outside a building that was never there.
+- **Send anybody to a closed venue.** Opening hours are checked at the stop's actual arrival time and a closed venue is skipped, not annotated. `ItineraryStop` refuses to validate one, so no code path can render it.
+- **Assume a venue is open.** Missing hours are a third state, `unknown`, rendered as unknown. OpenStreetMap's coverage is patchy and treating "no data" as "open" is how a plan sends two people to a locked door.
+- **Claim an interest a venue does not serve.** Interests are keyed per OSM tag in `src/mcp/venue_rules.py`. An earlier mapping keyed them by coarse category and gave a 24-hour gym `chess`, which would have produced "you have both mentioned chess" beside a gym — the same invented commonality the Communication Agent is forbidden.
+- **Carry contributed free text into the product.** `opening_hours` is user-contributed and one real fetch returned a contributor's name and mobile number in it. The field is *whitelisted* to recognisable syntax, not scrubbed; anything else becomes "hours unknown".
+
+**Stops are ordered by proximity to the previous stop.** Ranked on fit alone the planner produced a gallery and a coffee shop ten kilometres and two hours apart in one evening — both individually well chosen, the plan nonsense. This is venue-to-venue distance between stops *already selected*; nothing here knows where a participant is, and `spark-places` cannot be told.
+
+**Maps without a key.** The route is drawn from the coordinates rather than tiled, so it works offline like the rest of the client and there is no browser API key to leak. Per-stop **Navigate** buttons open real Google Maps directions via `maps/dir/?api=1`, a documented public URL that takes no credential.
+
+**After the date**, `DateReflection` records how it went — privately. There is no route returning another person's reflection, no field saying whether they wrote one, and no status meaning "they turned you down". A plan the other person did not take up is `cancelled`, indistinguishable from one nobody got round to: invariant 2's rule, still holding long after the reveal.
 
 ## 14. State machine
 
@@ -342,7 +372,7 @@ Outcome       encounter_id | lockin_id, private_signals[], prediction_error
 | Runtime | **Bedrock AgentCore Runtime** | Serverless agent hosting |
 | Memory | **AgentCore Memory** | Long-term profile and continuity notes, separate from per-encounter state |
 | Tool bridge | **AgentCore Gateway** | Wraps REST services as MCP tools |
-| Tools | **MCP**: `spark-overlap`, `spark-profile`, `spark-voice`, `spark-calendar`, `spark-venue`, `spark-sim` | Same graph runs against simulator and live services by swapping endpoints |
+| Tools | **MCP**: `spark-overlap`, `spark-profile`, `spark-voice`, `spark-calendar`, `spark-venue`, `spark-sim`, `spark-places` | Same graph runs against simulator and live services by swapping endpoints |
 | Client | **AG-UI** | The agent decides what to render — encounter card, consent prompt, brief |
 | Observability | **OpenTelemetry** | One trace per encounter and per continuity action |
 | Safety | **Bedrock Guardrails** | Every generated user-facing string |
