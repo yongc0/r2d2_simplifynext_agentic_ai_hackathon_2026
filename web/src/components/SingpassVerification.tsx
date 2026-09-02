@@ -66,7 +66,7 @@ export function SingpassVerification({
               <button
                 type="button"
                 onClick={() => setStep("consent")}
-                className="w-full rounded-pill bg-accent px-6 py-4 text-base font-medium text-text transition-opacity hover:opacity-90"
+                className="w-full rounded-pill bg-accent px-6 py-4 text-base font-medium text-cream transition-opacity hover:opacity-90"
               >
                 Verify with Singpass demo
               </button>
@@ -173,7 +173,7 @@ export function SingpassVerification({
             <button
               type="button"
               onClick={onComplete}
-              className="mt-10 w-full rounded-pill bg-accent px-6 py-4 text-base font-medium text-text transition-opacity hover:opacity-90"
+              className="mt-10 w-full rounded-pill bg-accent px-6 py-4 text-base font-medium text-cream transition-opacity hover:opacity-90"
             >
               Continue to profile
             </button>

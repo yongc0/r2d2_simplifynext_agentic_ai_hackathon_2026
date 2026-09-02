@@ -133,7 +133,7 @@ export function GuardianOverlay({
                   <button
                     type="button"
                     onClick={onStepAway}
-                    className="w-full rounded-pill bg-accent px-6 py-3.5 text-sm font-medium text-text transition-opacity hover:opacity-90"
+                    className="w-full rounded-pill bg-accent px-6 py-3.5 text-sm font-medium text-cream transition-opacity hover:opacity-90"
                   >
                     Step away now
                   </button>

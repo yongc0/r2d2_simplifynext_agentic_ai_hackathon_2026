@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { CalendarHeart, Home, Sparkles, UserRound } from "lucide-react";
+import { CalendarHeart, Heart, Home, Sparkles, UserRound } from "lucide-react";
 
 /**
  * The app's navigation — FRONTEND.md §5.2, amended.
@@ -59,18 +59,28 @@ export function AppNav() {
   return (
     <nav
       aria-label="Main"
-      className="absolute inset-x-0 bottom-0 z-30 border-t border-white/[0.07] bg-bg/95 px-2 pt-2 pb-3 backdrop-blur"
+      className="absolute inset-x-0 top-0 z-30 overflow-hidden bg-cream shadow-[0_7px_20px_-14px_rgba(2,0,13,0.7)]"
     >
-      <ul className="flex items-stretch justify-around">
+      <div className="flex h-14 items-center gap-2 bg-navy px-5 text-cream">
+        <span className="grid size-7 place-items-center rounded-full bg-cream text-navy">
+          <Heart size={15} fill="currentColor" strokeWidth={1.7} aria-hidden="true" />
+        </span>
+        <span className="text-[15px] font-semibold tracking-[0.02em]">Spark</span>
+        <span className="ml-auto text-[9px] font-medium tracking-[0.17em] text-cream/65 uppercase">
+          One real conversation
+        </span>
+      </div>
+
+      <ul className="flex h-14 items-stretch justify-around border-b border-navy/10 bg-cream px-2">
         {TABS.map(({ to, label, Icon }) => (
           <li key={to} className="flex-1">
             <NavLink
               to={to}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-1 rounded-xl py-1.5 text-[10px] transition-colors ${
+                `relative flex h-full flex-col items-center justify-center gap-0.5 text-[9px] font-medium tracking-wide transition-colors ${
                   isActive
-                    ? "text-accent-soft"
-                    : "text-muted hover:text-text"
+                    ? "text-navy after:absolute after:inset-x-5 after:bottom-0 after:h-0.5 after:rounded-full after:bg-clay"
+                    : "text-navy/60 hover:text-navy"
                 }`
               }
             >
@@ -78,7 +88,7 @@ export function AppNav() {
                 <>
                   {/* `aria-current` comes from NavLink; the icon is decorative
                       and the label is the accessible name. */}
-                  <Icon size={19} strokeWidth={isActive ? 2.2 : 1.7} aria-hidden="true" />
+                  <Icon size={18} strokeWidth={isActive ? 2.25 : 1.65} aria-hidden="true" />
                   <span>{label}</span>
                 </>
               )}
@@ -98,4 +108,4 @@ export function AppNav() {
  * content sitting underneath it — which on a phone frame is invisible until
  * somebody scrolls, and on camera is never.
  */
-export const NAV_HEIGHT_CLASS = "pb-24";
+export const NAV_HEIGHT_CLASS = "pt-[132px] pb-8";

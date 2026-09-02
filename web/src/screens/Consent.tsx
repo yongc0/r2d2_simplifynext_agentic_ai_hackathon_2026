@@ -173,7 +173,7 @@ export default function Consent() {
         <button
           type="button"
           onClick={() => answer(true)}
-          className="w-full rounded-pill bg-accent px-6 py-4 text-base font-medium text-text transition-opacity hover:opacity-90"
+          className="w-full rounded-pill bg-accent px-6 py-4 text-base font-medium text-cream transition-opacity hover:opacity-90"
         >
           Yes
         </button>

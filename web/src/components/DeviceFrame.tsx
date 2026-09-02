@@ -58,16 +58,16 @@ function Phone({ children }: { children: ReactNode }) {
       className="
         relative w-full min-h-dvh bg-bg
         md:min-h-0 md:w-[390px] md:h-[844px] md:shrink-0
-        md:rounded-[44px]
-        md:shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.04)]
-        md:ring-[10px] md:ring-bezel
+        md:rounded-[24px]
+        md:shadow-[0_28px_70px_-24px_rgba(2,0,13,0.45),0_10px_28px_-14px_rgba(7,32,63,0.3)]
+        md:ring-[6px] md:ring-bezel
       "
     >
       {/*
         The screen. Clipped to the frame's radius so content cannot paint over
         the bezel, and scrolled without visible chrome.
       */}
-      <div className="absolute inset-0 overflow-hidden md:rounded-[34px]">
+      <div className="absolute inset-0 overflow-hidden md:rounded-[18px]">
         <div className="no-scrollbar h-full w-full overflow-y-auto">
           {children}
         </div>

@@ -188,7 +188,7 @@ export default function Onboarding() {
           <button
             type="button"
             onClick={() => navigate("/home", { replace: true })}
-            className="w-full rounded-pill bg-accent px-6 py-4 text-base font-medium text-text transition-opacity hover:opacity-90"
+            className="w-full rounded-pill bg-accent px-6 py-4 text-base font-medium text-cream transition-opacity hover:opacity-90"
           >
             Continue
           </button>
@@ -294,7 +294,7 @@ function Bubble({
         className={
           fromAgent
             ? "max-w-[80%] rounded-card rounded-bl-md bg-surface px-4 py-3 text-[15px] leading-relaxed text-text/90"
-            : "max-w-[80%] rounded-card rounded-br-md bg-accent/85 px-4 py-3 text-[15px] leading-relaxed text-text"
+            : "max-w-[80%] rounded-card rounded-br-md bg-accent/90 px-4 py-3 text-[15px] leading-relaxed text-cream"
         }
       >
         {message.text}
@@ -381,7 +381,7 @@ function Composer({
       <button
         type="submit"
         disabled={disabled || value.trim().length === 0}
-        className="shrink-0 rounded-pill bg-accent px-5 py-3.5 text-sm font-medium text-text transition-opacity hover:opacity-90 disabled:opacity-30"
+        className="shrink-0 rounded-pill bg-accent px-5 py-3.5 text-sm font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-30"
       >
         Send
       </button>
@@ -450,7 +450,7 @@ function TraitChoice({
         <button
           type="button"
           onClick={onContinue}
-          className="mt-4 w-full rounded-pill bg-accent px-5 py-3 text-sm font-medium text-text transition-opacity hover:opacity-90"
+          className="mt-4 w-full rounded-pill bg-accent px-5 py-3 text-sm font-medium text-cream transition-opacity hover:opacity-90"
         >
           Continue with {selected.length} {selected.length === 1 ? "trait" : "traits"}
         </button>

@@ -96,7 +96,7 @@ export default function DateHistory() {
   };
 
   return (
-    <div className={`flex h-full flex-col px-6 pt-16 ${NAV_HEIGHT_CLASS}`}>
+    <div className={`flex h-full flex-col px-6 ${NAV_HEIGHT_CLASS}`}>
       <header className="mb-5">
         <button
           type="button"

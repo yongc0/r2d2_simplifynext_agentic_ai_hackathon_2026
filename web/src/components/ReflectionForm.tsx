@@ -181,7 +181,7 @@ export function ReflectionForm({
         type="button"
         onClick={submit}
         disabled={!ready || busy}
-        className="w-full rounded-full bg-accent px-4 py-3 text-sm font-medium text-[#11151c] transition-opacity disabled:opacity-40"
+        className="w-full rounded-full bg-accent px-4 py-3 text-sm font-medium text-cream transition-opacity disabled:opacity-40"
       >
         {busy ? "Saving…" : "Save — just for me"}
       </button>

@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Plus, X } from "lucide-react";
 
 import { getAdapter } from "../api/adapter";
 import { NAV_HEIGHT_CLASS } from "../components/AppNav";
 import { SettingsPanel } from "../components/SettingsPanel";
-import { KNOWN_INTERESTS, KNOWN_TRAITS, KNOWN_VALUES } from "../api/extract";
+import {
+  EXCLUDED_ATTRIBUTES,
+  KNOWN_INTERESTS,
+  KNOWN_TRAITS,
+  KNOWN_VALUES,
+} from "../api/extract";
 import type { ChipKind, Intent, ProfileChip } from "../api/types";
 import { intentLabel, intentValue } from "../api/wire";
 import { useSpark } from "../store/useSpark";
@@ -95,6 +101,9 @@ export default function Profile() {
         values: chips
           .filter((c) => c.kind === "value")
           .map((c) => c.label.toLowerCase()),
+        languages: chips
+          .filter((c) => c.kind === "language")
+          .map((c) => c.label.toLowerCase()),
         personality: chips
           .filter((c) => c.kind === "trait")
           .map((c) => c.label.toLowerCase())
@@ -109,9 +118,12 @@ export default function Profile() {
   }, [chips]);
 
   return (
-    <div className={`no-scrollbar h-full overflow-y-auto px-6 pt-16 ${NAV_HEIGHT_CLASS}`}>
+    <div className={`no-scrollbar h-full overflow-y-auto px-6 ${NAV_HEIGHT_CLASS}`}>
       <header className="mb-5">
-        <h1 className="text-2xl font-medium tracking-tight text-text">You</h1>
+        <p className="text-[10px] font-semibold tracking-[0.2em] text-navy/60 uppercase">
+          Your profile
+        </p>
+        <h1 className="mt-1 text-[1.75rem] font-semibold tracking-tight text-text">You</h1>
         <p className="mt-1.5 text-sm leading-relaxed text-muted">
           What Spark uses to find someone worth three minutes.
         </p>
@@ -128,7 +140,7 @@ export default function Profile() {
           <button
             type="button"
             onClick={() => navigate("/onboarding")}
-            className="mt-4 w-full rounded-pill bg-accent px-6 py-3.5 text-sm font-medium text-text transition-opacity hover:opacity-90"
+            className="mt-4 w-full rounded-pill bg-accent px-6 py-3.5 text-sm font-medium text-cream transition-opacity hover:opacity-90"
           >
             Set up your profile
           </button>
@@ -171,7 +183,7 @@ export default function Profile() {
 
           {/* --- personality, interests and values ------------------------ */}
           <EditableChips
-            title="How you describe yourself"
+            title="Characteristics"
             options={[...KNOWN_TRAITS]}
             chips={byKind("trait")}
             editing={editing === "trait"}
@@ -180,6 +192,7 @@ export default function Profile() {
             }
             onToggle={(label) => toggle("trait", label)}
             has={(label) => has("trait", label)}
+            allowCustom
           />
 
           <EditableChips
@@ -192,6 +205,7 @@ export default function Profile() {
             }
             onToggle={(label) => toggle("interest", label)}
             has={(label) => has("interest", label)}
+            allowCustom
           />
 
           <EditableChips
@@ -202,15 +216,30 @@ export default function Profile() {
             onToggleEdit={() => setEditing(editing === "value" ? null : "value")}
             onToggle={(label) => toggle("value", label)}
             has={(label) => has("value", label)}
+            allowCustom
           />
 
           {/* Availability is editable, and lives with the other settings that
               genuinely change what the system does — see `SettingsPanel`. */}
-          {byKind("language").length > 0 ? (
-            <Section title="Languages">
-              <ChipRow chips={byKind("language")} />
-            </Section>
-          ) : null}
+          <EditableChips
+            title="Languages"
+            options={[
+              "english",
+              "mandarin",
+              "malay",
+              "tamil",
+              "cantonese",
+              "hokkien",
+            ]}
+            chips={byKind("language")}
+            editing={editing === "language"}
+            onToggleEdit={() =>
+              setEditing(editing === "language" ? null : "language")
+            }
+            onToggle={(label) => toggle("language", label)}
+            has={(label) => has("language", label)}
+            allowCustom
+          />
 
           <Section
             title="Not here, on purpose"
@@ -274,7 +303,7 @@ function ChipRow({ chips }: { chips: ProfileChip[] }) {
       {chips.map((chip) => (
         <span
           key={`${chip.kind}:${chip.label}`}
-          className="rounded-pill bg-white/[0.06] px-3 py-1.5 text-[13px] text-text/90 ring-1 ring-white/10 ring-inset"
+          className="rounded-pill bg-cream px-3 py-1.5 text-[13px] text-text/90 ring-1 ring-navy/15 ring-inset"
         >
           {chip.label}
         </span>
@@ -299,6 +328,7 @@ function EditableChips({
   onToggleEdit,
   onToggle,
   has,
+  allowCustom = false,
 }: {
   title: string;
   options: string[];
@@ -307,8 +337,29 @@ function EditableChips({
   onToggleEdit: () => void;
   onToggle: (label: string) => void;
   has: (label: string) => boolean;
+  allowCustom?: boolean;
 }) {
   const titleCase = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+  const [customValue, setCustomValue] = useState("");
+  const [customError, setCustomError] = useState<string | null>(null);
+  const standardLabels = new Set(options.map(titleCase));
+  const customChips = chips.filter((chip) => !standardLabels.has(chip.label));
+
+  const addCustom = () => {
+    const clean = customValue.trim().replace(/\s+/g, " ");
+    if (!clean) return;
+    if (EXCLUDED_ATTRIBUTES.test(clean)) {
+      setCustomError(
+        "Spark does not collect appearance or body characteristics.",
+      );
+      return;
+    }
+
+    const label = titleCase(clean.toLowerCase()).slice(0, 40);
+    if (!has(label)) onToggle(label);
+    setCustomValue("");
+    setCustomError(null);
+  };
 
   return (
     <section>
@@ -326,26 +377,102 @@ function EditableChips({
       </div>
 
       {editing ? (
-        <div className="flex flex-wrap gap-2">
-          {options.map((option) => {
-            const label = titleCase(option);
-            const active = has(label);
-            return (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={active}
-                onClick={() => onToggle(label)}
-                className={`rounded-pill px-3 py-1.5 text-[13px] ring-1 ring-inset transition-colors ${
-                  active
-                    ? "bg-accent/25 text-accent-soft ring-accent/30"
-                    : "bg-white/[0.04] text-text/80 ring-white/[0.08] hover:bg-white/[0.08]"
-                }`}
+        <div className="rounded-card bg-cream/75 p-3.5 ring-1 ring-navy/10 ring-inset">
+          <div className="flex flex-wrap gap-2">
+            {options.map((option) => {
+              const label = titleCase(option);
+              const active = has(label);
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => onToggle(label)}
+                  className={`rounded-pill px-3 py-1.5 text-[13px] ring-1 ring-inset transition-colors ${
+                    active
+                      ? "bg-navy text-cream ring-navy"
+                      : "bg-peach/35 text-text/80 ring-navy/10 hover:bg-peach/60"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {allowCustom ? (
+            <div className="mt-4 border-t border-navy/10 pt-3">
+              {customChips.length > 0 ? (
+                <div className="mb-3 flex flex-wrap gap-2" aria-label={`Custom ${title.toLowerCase()}`}>
+                  {customChips.map((chip) => (
+                    <button
+                      key={`${chip.kind}:${chip.label}`}
+                      type="button"
+                      onClick={() => onToggle(chip.label)}
+                      aria-label={`Remove ${chip.label}`}
+                      className="inline-flex items-center gap-1.5 rounded-pill bg-navy px-3 py-1.5 text-[12px] text-cream"
+                    >
+                      {chip.label}
+                      <X size={12} aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <label
+                htmlFor={`custom-${title.toLowerCase().replace(/\s+/g, "-")}`}
+                className="text-[10px] font-semibold tracking-[0.16em] text-navy/65 uppercase"
               >
-                {label}
-              </button>
-            );
-          })}
+                Others
+              </label>
+              <div className="mt-2 flex gap-2">
+                <input
+                  id={`custom-${title.toLowerCase().replace(/\s+/g, "-")}`}
+                  type="text"
+                  maxLength={40}
+                  value={customValue}
+                  onChange={(event) => {
+                    setCustomValue(event.target.value);
+                    if (customError) setCustomError(null);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addCustom();
+                    }
+                  }}
+                  placeholder={
+                    title === "Interests"
+                      ? "Add another interest"
+                      : title === "Languages"
+                        ? "Add another language"
+                        : title === "What matters to you"
+                          ? "Add another value"
+                      : "Add a characteristic"
+                  }
+                  className="min-w-0 flex-1 rounded-pill border border-navy/15 bg-surface px-4 py-2.5 text-sm text-text placeholder:text-muted/60 focus:border-navy/40 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={addCustom}
+                  disabled={!customValue.trim()}
+                  aria-label={`Add custom ${title.toLowerCase()}`}
+                  className="grid size-10 shrink-0 place-items-center rounded-full bg-navy text-cream transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  <Plus size={17} aria-hidden="true" />
+                </button>
+              </div>
+              {customError ? (
+                <p role="alert" className="mt-2 flex items-center gap-1.5 text-[11px] leading-relaxed text-clay">
+                  <X size={12} aria-hidden="true" />
+                  {customError}
+                </p>
+              ) : (
+                <p className="mt-2 text-[10px] leading-relaxed text-muted/75">
+                  Add your own words. These are saved with the rest of your profile.
+                </p>
+              )}
+            </div>
+          ) : null}
         </div>
       ) : chips.length > 0 ? (
         <ChipRow chips={chips} />

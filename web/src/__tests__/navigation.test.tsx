@@ -174,6 +174,17 @@ describe("/profile", () => {
     ).toBeInTheDocument();
   });
 
+  it("fills the home screen with the three private encounter steps", async () => {
+    renderAt("/home");
+
+    expect(
+      await screen.findByRole("heading", { name: /how tonight works/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("9:00pm")).toBeInTheDocument();
+    expect(screen.getByText("Three minutes")).toBeInTheDocument();
+    expect(screen.getByText("You both choose")).toBeInTheDocument();
+  });
+
   it("stops saying so once there is a profile", async () => {
     useSpark.getState().setChips([{ kind: "interest", label: "Coffee" }]);
     renderAt("/home");
@@ -239,6 +250,92 @@ describe("/profile", () => {
         useSpark.getState().chips.some((c) => c.label === "Climbing"),
       ).toBe(false),
     );
+  });
+
+  it("adds custom characteristics and interests from Others", async () => {
+    useSpark.getState().setChips([{ kind: "intent", label: "Friends" }]);
+    renderAt("/profile");
+
+    const characteristics = (
+      await screen.findByText(/^characteristics$/i)
+    ).closest("section")!;
+    fireEvent.click(
+      within(characteristics).getByRole("button", { name: /edit/i }),
+    );
+    fireEvent.change(
+      within(characteristics).getByPlaceholderText(/add a characteristic/i),
+      { target: { value: "Good listener" } },
+    );
+    fireEvent.click(
+      within(characteristics).getByRole("button", {
+        name: /add custom characteristics/i,
+      }),
+    );
+
+    const interests = screen.getByText(/^interests$/i).closest("section")!;
+    fireEvent.click(within(interests).getByRole("button", { name: /edit/i }));
+    fireEvent.change(
+      within(interests).getByPlaceholderText(/add another interest/i),
+      { target: { value: "Jazz cafés" } },
+    );
+    fireEvent.keyDown(
+      within(interests).getByPlaceholderText(/add another interest/i),
+      { key: "Enter" },
+    );
+
+    await waitFor(() => {
+      expect(useSpark.getState().chips).toEqual(
+        expect.arrayContaining([
+          { kind: "trait", label: "Good listener" },
+          { kind: "interest", label: "Jazz cafés" },
+        ]),
+      );
+    });
+
+    fireEvent.click(
+      within(interests).getByRole("button", { name: /remove jazz cafés/i }),
+    );
+    await waitFor(() =>
+      expect(
+        useSpark.getState().chips.some((chip) => chip.label === "Jazz cafés"),
+      ).toBe(false),
+    );
+  });
+
+  it("adds custom values and languages from Others and saves them", async () => {
+    useSpark.getState().setChips([{ kind: "intent", label: "Friends" }]);
+    renderAt("/profile");
+
+    const values = (
+      await screen.findByText(/^what matters to you$/i)
+    ).closest("section")!;
+    fireEvent.click(within(values).getByRole("button", { name: /edit/i }));
+    fireEvent.change(
+      within(values).getByPlaceholderText(/add another value/i),
+      { target: { value: "Community" } },
+    );
+    fireEvent.click(
+      within(values).getByRole("button", {
+        name: /add custom what matters to you/i,
+      }),
+    );
+
+    const languages = screen.getByText(/^languages$/i).closest("section")!;
+    fireEvent.click(within(languages).getByRole("button", { name: /edit/i }));
+    fireEvent.change(
+      within(languages).getByPlaceholderText(/add another language/i),
+      { target: { value: "Japanese" } },
+    );
+    fireEvent.keyDown(
+      within(languages).getByPlaceholderText(/add another language/i),
+      { key: "Enter" },
+    );
+
+    await waitFor(async () => {
+      const profile = await adapter.getProfile();
+      expect(profile.values).toContain("community");
+      expect(profile.languages).toContain("japanese");
+    });
   });
 
   it("offers no height, photo or appearance field", async () => {

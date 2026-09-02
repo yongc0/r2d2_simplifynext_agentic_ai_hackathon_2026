@@ -217,7 +217,7 @@ export default function DateStudio() {
   }
 
   return (
-    <div className={`flex h-full flex-col px-6 pt-16 ${NAV_HEIGHT_CLASS}`}>
+    <div className={`flex h-full flex-col px-6 ${NAV_HEIGHT_CLASS}`}>
       <header className="mb-4">
         <button
           type="button"
@@ -290,7 +290,7 @@ export default function DateStudio() {
               type="button"
               onClick={generate}
               disabled={busy}
-              className="w-full rounded-pill bg-accent px-6 py-3.5 text-sm font-medium text-text transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-pill bg-accent px-6 py-3.5 text-sm font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {busy ? "Thinking…" : "Generate plans"}
             </button>

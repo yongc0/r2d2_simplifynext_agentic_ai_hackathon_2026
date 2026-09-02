@@ -68,7 +68,7 @@ export default function LockIns() {
   const empty = Math.max(0, SLOTS - active.length);
 
   return (
-    <div className={`flex h-full flex-col px-6 pt-16 ${NAV_HEIGHT_CLASS}`}>
+    <div className={`flex h-full flex-col px-6 ${NAV_HEIGHT_CLASS}`}>
       <header className="mb-6 flex items-baseline justify-between">
         <h1 className="text-2xl font-medium tracking-tight text-text">
           Lock-ins

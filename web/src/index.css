@@ -12,22 +12,32 @@
    (bg-surface, text-muted, rounded-card) without a tailwind.config.js.
    --------------------------------------------------------------------------- */
 @theme {
-  --color-bg: #0f0d0e;
-  --color-surface: #1a1719;
-  --color-accent: #b03060;
-  --color-accent-soft: #e8a0b8;
-  --color-text: #f5f0f1;
-  --color-muted: #9a9094;
+  /* Blue-neutral palette supplied for the redesign. The semantic aliases
+     below keep every existing screen on the same visual system. */
+  --color-ink: #02000d;
+  --color-navy: #07203f;
+  --color-cream: #ebded4;
+  --color-peach: #d9aa90;
+  --color-clay: #a65e46;
+
+  --color-bg: #d9aa90;
+  --color-surface: #ebded4;
+  /* Navy carries interactive text at 12.37:1 against cream. Clay remains the
+     warm brand accent for dividers and decoration, rather than small copy. */
+  --color-accent: #07203f;
+  --color-accent-soft: #07203f;
+  --color-text: #02000d;
+  --color-muted: #07203f;
 
   /* The desktop backdrop the phone sits on. Deliberately a warm neutral rather
      than black: a pure-black surround makes the device frame disappear on a
      compressed video. */
-  --color-backdrop: #191617;
-  --color-bezel: #050404;
+  --color-backdrop: #ebded4;
+  --color-bezel: #02000d;
 
-  --radius-card: 20px;
+  --radius-card: 16px;
   --radius-pill: 999px;
-  --radius-device: 44px;
+  --radius-device: 24px;
 
   --font-sans: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -49,8 +59,21 @@ body,
 
 body {
   font-family: var(--font-sans);
+  background: var(--color-backdrop);
+  color: var(--color-text);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Scrollbars never appear in frame. Content that overflows scrolls, but the

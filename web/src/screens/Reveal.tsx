@@ -95,7 +95,7 @@ export default function Reveal() {
         <button
           type="button"
           onClick={() => navigate("/lockins", { replace: true })}
-          className="w-full rounded-pill bg-accent px-6 py-4 text-base font-medium text-text transition-opacity hover:opacity-90"
+          className="w-full rounded-pill bg-accent px-6 py-4 text-base font-medium text-cream transition-opacity hover:opacity-90"
         >
           Add to lock-ins
         </button>

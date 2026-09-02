@@ -52,7 +52,7 @@ export default function Plans() {
   }, []);
 
   return (
-    <div className={`flex h-full flex-col px-6 pt-16 ${NAV_HEIGHT_CLASS}`}>
+    <div className={`flex h-full flex-col px-6 ${NAV_HEIGHT_CLASS}`}>
       <header className="mb-5">
         <h1 className="text-2xl font-medium tracking-tight text-text">Plans</h1>
         <p className="mt-1.5 text-sm leading-relaxed text-muted">

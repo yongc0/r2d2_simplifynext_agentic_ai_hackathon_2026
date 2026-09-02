@@ -97,7 +97,7 @@ export default function Encounter() {
         <button
           type="button"
           onClick={() => respond(true)}
-          className="w-full rounded-pill bg-accent px-6 py-4 text-base font-medium text-text transition-opacity hover:opacity-90"
+          className="w-full rounded-pill bg-accent px-6 py-4 text-base font-medium text-cream transition-opacity hover:opacity-90"
         >
           Accept
         </button>

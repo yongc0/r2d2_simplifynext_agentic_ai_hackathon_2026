@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Clock3, HeartHandshake, Mic2 } from "lucide-react";
 
 import { getAdapter } from "../api/adapter";
 import { Avatar } from "../components/Avatar";
@@ -108,9 +109,12 @@ export default function Home() {
   const active = lockIns.filter((l) => l.state !== "released");
 
   return (
-    <div className={`flex h-full flex-col px-8 pt-20 ${NAV_HEIGHT_CLASS}`}>
+    <div className={`flex h-full flex-col px-6 ${NAV_HEIGHT_CLASS}`}>
       <div className="flex flex-col gap-3">
-        <h1 className="text-[1.6rem] leading-snug font-medium tracking-tight text-text">
+        <p className="text-[10px] font-semibold tracking-[0.2em] text-navy/60 uppercase">
+          Tonight on Spark
+        </p>
+        <h1 className="max-w-[19rem] text-[1.75rem] leading-[1.12] font-semibold tracking-tight text-text">
           {open
             ? "Your encounter window is open."
             : status.phase === "closed"
@@ -125,7 +129,7 @@ export default function Home() {
           </p>
         ) : (
           <>
-            <p className="font-mono text-[2.5rem] leading-none tracking-tight text-accent-soft tabular-nums">
+            <p className="font-mono text-[2.5rem] leading-none tracking-tight text-navy tabular-nums">
               {formatCountdown(status.msRemaining)}
             </p>
             {status.phase === "closed" ? (
@@ -141,7 +145,7 @@ export default function Home() {
         <button
           type="button"
           onClick={() => navigate("/encounter")}
-          className="mt-8 w-full rounded-pill bg-accent px-6 py-4 text-base font-medium text-text transition-opacity hover:opacity-90"
+          className="mt-8 w-full rounded-pill bg-navy px-6 py-4 text-base font-semibold text-cream shadow-[0_10px_24px_-14px_rgba(7,32,63,0.8)] transition-transform hover:-translate-y-0.5"
         >
           Open tonight's encounter
         </button>
@@ -154,7 +158,7 @@ export default function Home() {
         <button
           type="button"
           onClick={() => navigate("/profile")}
-          className="mt-8 w-full rounded-card bg-surface px-4 py-4 text-left ring-1 ring-white/[0.06] ring-inset transition-colors hover:bg-white/[0.07]"
+          className="mt-8 w-full rounded-card bg-surface px-4 py-4 text-left shadow-[0_10px_24px_-20px_rgba(2,0,13,0.6)] ring-1 ring-navy/10 ring-inset transition-transform hover:-translate-y-0.5"
         >
           <span className="block text-sm text-text">Set up your profile</span>
           <span className="mt-1 block text-xs leading-relaxed text-muted">
@@ -162,6 +166,43 @@ export default function Home() {
           </span>
         </button>
       ) : null}
+
+      <section
+        aria-labelledby="tonight-works"
+        className="mt-8 rounded-card bg-navy p-5 text-cream shadow-[0_14px_32px_-20px_rgba(7,32,63,0.9)]"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[9px] font-semibold tracking-[0.18em] text-cream/75 uppercase">
+              One encounter, your pace
+            </p>
+            <h2 id="tonight-works" className="mt-1 text-lg font-semibold">
+              How tonight works
+            </h2>
+          </div>
+          <span className="rounded-pill bg-cream/10 px-2.5 py-1 text-[9px] font-semibold tracking-wide text-cream ring-1 ring-cream/25 ring-inset">
+            PRIVATE
+          </span>
+        </div>
+
+        <ol className="mt-4 grid gap-3">
+          <HomeStep
+            Icon={Clock3}
+            title="9:00pm"
+            detail="One encounter, selected for tonight."
+          />
+          <HomeStep
+            Icon={Mic2}
+            title="Three minutes"
+            detail="An anonymous voice call with a hard stop."
+          />
+          <HomeStep
+            Icon={HeartHandshake}
+            title="You both choose"
+            detail="Names unlock only after two private yeses."
+          />
+        </ol>
+      </section>
 
       {/* Below the fold: the lock-ins, and nothing else. No feed, no
           suggestions, no "people you might like". */}
@@ -175,7 +216,7 @@ export default function Home() {
               key={lockIn.lockInId}
               type="button"
               onClick={() => navigate("/lockins")}
-              className="flex items-center gap-3 rounded-card bg-surface px-3.5 py-3 text-left ring-1 ring-white/[0.06] ring-inset transition-colors hover:bg-white/[0.07]"
+              className="flex items-center gap-3 rounded-card bg-surface px-3.5 py-3 text-left shadow-[0_8px_20px_-18px_rgba(2,0,13,0.7)] ring-1 ring-navy/10 ring-inset transition-transform hover:-translate-y-0.5"
             >
               <Avatar seed={lockIn.person.avatarSeed} size={36} />
               <span className="truncate text-sm text-text">
@@ -195,7 +236,7 @@ export default function Home() {
         <button
           type="button"
           onClick={() => navigate("/plans")}
-          className="mt-4 w-full rounded-pill bg-white/[0.06] px-6 py-3 text-sm text-text transition-colors hover:bg-white/[0.1]"
+          className="mt-4 w-full rounded-pill bg-cream/70 px-6 py-3 text-sm font-medium text-navy ring-1 ring-navy/10 ring-inset transition-colors hover:bg-cream"
         >
           Plan something
         </button>
@@ -203,10 +244,32 @@ export default function Home() {
 
       <div className="flex-1" />
 
-      <p className="text-center text-xs leading-relaxed text-muted/70">
+      <p className="text-center text-xs font-medium leading-relaxed text-muted">
         One person a day. Three minutes. No names unless you both say yes.
       </p>
     </div>
+  );
+}
+
+function HomeStep({
+  Icon,
+  title,
+  detail,
+}: {
+  Icon: typeof Clock3;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <li className="flex items-center gap-3">
+      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-peach text-navy">
+        <Icon size={16} strokeWidth={2} aria-hidden="true" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[12px] font-semibold text-cream">{title}</span>
+        <span className="block text-[11px] leading-relaxed text-cream/80">{detail}</span>
+      </span>
+    </li>
   );
 }
 
