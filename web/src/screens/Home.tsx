@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock3, HeartHandshake, Mic2 } from "lucide-react";
+import { HeartHandshake, Mic2, Sparkles } from "lucide-react";
 
 import { getAdapter } from "../api/adapter";
 import { Avatar } from "../components/Avatar";
@@ -8,62 +8,9 @@ import { NAV_HEIGHT_CLASS } from "../components/AppNav";
 import { useSpark } from "../store/useSpark";
 
 /**
- * /home — the waiting state (FRONTEND.md §5.2).
- *
- * "Deliberately, almost aggressively empty. One line of copy and a countdown to
- * the evening encounter window. Below: the lock-in list if any exist. Nothing
- * else. No feed, no browse, no profiles, no activity. The emptiness is the
- * product argument — there is nothing here to scroll."
- *
- * That is the hardest instruction in the spec to follow, because every instinct
- * says to put something here. There is nothing here on purpose: a product whose
- * claim is "one person a day, three minutes" cannot also be somewhere you spend
- * an evening, and a home screen with a feed on it would say the opposite of
- * everything the rest of the app says.
- *
- * The countdown is the only moving thing, and it is honest — it counts to the
- * next 9pm, not to a number chosen to look good on camera.
+ * /home — spontaneous encounter state. There is intentionally no countdown:
+ * when an encounter is ready, the call can begin immediately.
  */
-
-/**
- * The evening window, in local time. One hour, once a day.
- *
- * It CLOSES. The first version counted down to 21:00 and then reported the
- * window open for the rest of time, because `msUntilWindow` returned 0 for
- * everything past 9pm — which quietly turned a one-hour window into a permanent
- * one. The scarcity is the product; a window that never shuts is a feed with a
- * countdown in front of it.
- */
-const WINDOW_OPENS_HOUR = 21;
-const WINDOW_CLOSES_HOUR = 22;
-
-type WindowPhase = "before" | "open" | "closed";
-
-interface WindowStatus {
-  phase: WindowPhase;
-  /** Until it opens, until it closes, or until it opens again tomorrow. */
-  msRemaining: number;
-}
-
-/** Where the evening currently is. Exported for the test. */
-export function windowStatus(now: Date = new Date()): WindowStatus {
-  const opens = new Date(now);
-  opens.setHours(WINDOW_OPENS_HOUR, 0, 0, 0);
-  const closes = new Date(now);
-  closes.setHours(WINDOW_CLOSES_HOUR, 0, 0, 0);
-
-  if (now < opens) {
-    return { phase: "before", msRemaining: opens.getTime() - now.getTime() };
-  }
-  if (now < closes) {
-    return { phase: "open", msRemaining: closes.getTime() - now.getTime() };
-  }
-  // Tonight is over. The next one is tomorrow, and saying so is the honest
-  // version of "nothing here" — not an open window with nothing behind it.
-  const tomorrow = new Date(opens);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return { phase: "closed", msRemaining: tomorrow.getTime() - now.getTime() };
-}
 
 export default function Home() {
   const navigate = useNavigate();
@@ -74,21 +21,7 @@ export default function Home() {
   // working, so it is the one thing home will interrupt itself to mention.
   const chips = useSpark((s) => s.chips);
 
-  const [status, setStatus] = useState<WindowStatus>(() => windowStatus());
-
-  useEffect(() => {
-    // Derived from the clock each tick rather than latched into the store. The
-    // store's `windowOpen` is the OPERATOR's override (§8) and is never written
-    // from here — otherwise forcing it open and then letting the clock run
-    // would leave the two fighting over the same flag.
-    const id = setInterval(() => setStatus(windowStatus()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  // Forced open by the demo strip, or genuinely open. Five minutes of recording
-  // does not contain an evening, so the override exists — but it is additive,
-  // and it cannot make the phase say something the clock disagrees with.
-  const open = forcedOpen || status.phase === "open";
+  const open = forcedOpen;
 
   // The lock-in list, if there is one. Failure is silent here on purpose: this
   // screen's job is to be calm, and an error banner about a list that is empty
@@ -112,32 +45,20 @@ export default function Home() {
     <div className={`flex h-full flex-col px-6 ${NAV_HEIGHT_CLASS}`}>
       <div className="flex flex-col gap-3">
         <p className="text-[10px] font-semibold tracking-[0.2em] text-navy/60 uppercase">
-          Tonight on Spark
+          On Spark
         </p>
         <h1 className="max-w-[19rem] text-[1.75rem] leading-[1.12] font-semibold tracking-tight text-text">
-          {open
-            ? "Your encounter window is open."
-            : status.phase === "closed"
-              ? "Tonight's window has closed."
-              : "Your encounter window opens at 9:00pm."}
+          {open ? "Someone just crossed your path." : "Your next encounter will arrive spontaneously."}
         </h1>
 
         {open ? (
           <p className="text-sm leading-relaxed text-muted">
-            One person crossed your path today.
-            {!forcedOpen ? ` Closes in ${formatCountdown(status.msRemaining)}.` : ""}
+            Your anonymous three-minute call is ready now.
           </p>
         ) : (
-          <>
-            <p className="font-mono text-[2.5rem] leading-none tracking-tight text-navy tabular-nums">
-              {formatCountdown(status.msRemaining)}
-            </p>
-            {status.phase === "closed" ? (
-              <p className="text-sm leading-relaxed text-muted">
-                Until it opens again tomorrow.
-              </p>
-            ) : null}
-          </>
+          <p className="text-sm leading-relaxed text-muted">
+            There is no timer to watch. We will let you know the moment a suitable encounter is available.
+          </p>
         )}
       </div>
 
@@ -147,7 +68,7 @@ export default function Home() {
           onClick={() => navigate("/encounter")}
           className="mt-8 w-full rounded-pill bg-navy px-6 py-4 text-base font-semibold text-cream shadow-[0_10px_24px_-14px_rgba(7,32,63,0.8)] transition-transform hover:-translate-y-0.5"
         >
-          Open tonight's encounter
+          Start the encounter
         </button>
       ) : null}
 
@@ -177,7 +98,7 @@ export default function Home() {
               One encounter, your pace
             </p>
             <h2 id="tonight-works" className="mt-1 text-lg font-semibold">
-              How tonight works
+              How encounters work
             </h2>
           </div>
           <span className="rounded-pill bg-cream/10 px-2.5 py-1 text-[9px] font-semibold tracking-wide text-cream ring-1 ring-cream/25 ring-inset">
@@ -187,9 +108,9 @@ export default function Home() {
 
         <ol className="mt-4 grid gap-3">
           <HomeStep
-            Icon={Clock3}
-            title="9:00pm"
-            detail="One encounter, selected for tonight."
+            Icon={Sparkles}
+            title="Any moment"
+            detail="A suitable encounter can begin spontaneously."
           />
           <HomeStep
             Icon={Mic2}
@@ -250,13 +171,12 @@ export default function Home() {
     </div>
   );
 }
-
 function HomeStep({
   Icon,
   title,
   detail,
 }: {
-  Icon: typeof Clock3;
+  Icon: typeof Sparkles;
   title: string;
   detail: string;
 }) {
@@ -271,14 +191,4 @@ function HomeStep({
       </span>
     </li>
   );
-}
-
-function formatCountdown(ms: number): string {
-  const total = Math.max(0, Math.floor(ms / 1000));
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  const seconds = total % 60;
-  return [hours, minutes, seconds]
-    .map((n) => String(n).padStart(2, "0"))
-    .join(":");
 }

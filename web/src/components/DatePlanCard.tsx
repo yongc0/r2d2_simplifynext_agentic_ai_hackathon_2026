@@ -97,7 +97,7 @@ export function DatePlanCard({
               {stop.isCommercialPartner ? (
                 // Beside the venue, in the same breath. §13.6 — a partner is
                 // disclosed where it is read, never in a footnote.
-                <span className="ml-1.5 rounded-full bg-amber-400/10 px-2 py-0.5 text-[10px] text-amber-200 ring-1 ring-amber-400/20 ring-inset">
+                <span className="ml-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900 ring-1 ring-amber-300 ring-inset">
                   Spark partner
                 </span>
               ) : null}
@@ -157,7 +157,7 @@ export function DatePlanCard({
             onClick={onSave}
             disabled={saved}
             aria-pressed={saved}
-            className="rounded-pill bg-accent/20 px-4 py-2 text-xs text-accent-soft ring-1 ring-accent/25 ring-inset transition-colors hover:bg-accent/30 disabled:opacity-60"
+            className="rounded-pill bg-emerald-600 px-4 py-2 text-xs font-semibold text-white ring-1 ring-emerald-700 ring-inset transition-colors hover:bg-emerald-700 disabled:opacity-60"
           >
             {saved ? "Saved" : "Save"}
           </button>

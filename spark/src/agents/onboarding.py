@@ -165,19 +165,29 @@ class OnboardingAgent:
                 "onboarding.intents_dropped", ",".join(i.value for i in dropped)
             )
 
-        unresolved = [u for u in extraction.unresolved if u != "intent"]
+        tracked = {"intent", "interests", "characteristics", "values", "languages", "availability"}
+        unresolved = [u for u in extraction.unresolved if u not in tracked]
         if not kept:
             unresolved.append("intent")
 
         clean_interests = [i for i in extraction.interests if not _EXCLUDED_ATTRIBUTES.search(i)]
         clean_values = [v for v in extraction.values if not _EXCLUDED_ATTRIBUTES.search(v)]
+        clean_personality = _EXCLUDED_ATTRIBUTES.sub("", extraction.personality).strip()
+        if not clean_interests:
+            unresolved.append("interests")
+        if not clean_personality:
+            unresolved.append("characteristics")
+        if not clean_values:
+            unresolved.append("values")
+        if not extraction.languages:
+            unresolved.append("languages")
 
         return extraction.model_copy(
             update={
                 "intents": kept,
                 "interests": clean_interests,
                 "values": clean_values,
-                "personality": _EXCLUDED_ATTRIBUTES.sub("", extraction.personality).strip(),
+                "personality": clean_personality,
                 "unresolved": sorted(set(unresolved)),
             }
         )
@@ -204,10 +214,20 @@ class OnboardingAgent:
             interests=interests[:20],
             values=values[:10],
             personality=", ".join(traits[:5]),
-            languages=languages or ["english"],
+            languages=languages,
             availability_window=sorted(set(buckets), key=lambda b: b.value),
             matchable_fields=["intents", "languages", "availability_window", "interests"],
-            unresolved=[],
+            unresolved=[
+                key
+                for key, missing in (
+                    ("intent", not _named_intents(transcript)),
+                    ("interests", not interests),
+                    ("characteristics", not traits),
+                    ("values", not values),
+                    ("languages", not languages),
+                )
+                if missing
+            ],
         )
 
     # -----------------------------------------------------------------
@@ -261,8 +281,14 @@ class OnboardingAgent:
                 "Something long term, something short term, or friends? "
                 "There is no wrong answer, and you can change it later."
             )
-        if not extraction.availability_window:
-            return "Which part of the day usually works best for you?"
+        if "interests" in extraction.unresolved:
+            return "What interests or hobbies do you enjoy?"
+        if "characteristics" in extraction.unresolved:
+            return "Which characteristics best describe you?"
+        if "values" in extraction.unresolved:
+            return "What matters most to you in a relationship or friendship?"
+        if "languages" in extraction.unresolved:
+            return "Which languages are you comfortable speaking?"
         return None
 
 

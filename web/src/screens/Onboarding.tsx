@@ -6,6 +6,7 @@ import { getAdapter } from "../api/adapter";
 import { KNOWN_TRAITS } from "../api/extract";
 import type { ChipKind, Intent, ProfileChip } from "../api/types";
 import { SingpassVerification } from "../components/SingpassVerification";
+import { ForeignerSignup } from "../components/ForeignerSignup";
 import { intentLabel } from "../api/wire";
 import { useSpark } from "../store/useSpark";
 
@@ -48,17 +49,26 @@ const OPENING =
   "Hello. Tell me a little about how you spend your time, and what matters to you.";
 
 const COMPLETE =
-  "That is everything I need. Your first encounter window opens at 9pm.";
+  "That is everything I need. I will update your You profile with what you shared.";
 
 interface Message {
   from: "agent" | "user";
   text: string;
 }
 
+const REQUIRED_TOPICS: Array<{ topic: string; kind: ChipKind; question: string }> = [
+  { topic: "intent", kind: "intent", question: "What are you hoping to find here?" },
+  { topic: "interests", kind: "interest", question: "What interests or hobbies do you enjoy?" },
+  { topic: "characteristics", kind: "trait", question: "Which characteristics best describe you?" },
+  { topic: "values", kind: "value", question: "What matters most to you in a relationship or friendship?" },
+  { topic: "languages", kind: "language", question: "Which languages are you comfortable speaking?" },
+];
+
 export default function Onboarding() {
   const navigate = useNavigate();
   const reduced = useReducedMotion();
   const setChips = useSpark((s) => s.setChips);
+  const setProfilePhoto = useSpark((s) => s.setProfilePhoto);
   const chips = useSpark((s) => s.chips);
 
   /**
@@ -67,6 +77,7 @@ export default function Onboarding() {
    * It is a filmable product concept whose disclosure says exactly that.
    */
   const [verificationComplete, setVerificationComplete] = useState(false);
+  const [foreignerSignup, setForeignerSignup] = useState(false);
 
   const [messages, setMessages] = useState<Message[]>([
     { from: "agent", text: OPENING },
@@ -79,9 +90,7 @@ export default function Onboarding() {
   const [complete, setComplete] = useState(false);
   /** True when the agent is waiting on an intent it may not infer. */
   const [askingIntent, setAskingIntent] = useState(false);
-  /** Availability is a fixed vocabulary, so show every valid choice instead
-   *  of making the person guess which phrases the extractor recognises. */
-  const [askingAvailability, setAskingAvailability] = useState(false);
+  const [askingTopic, setAskingTopic] = useState<string | null>(null);
 
   /** Everything the person has actually said, in order. The extraction runs
    *  over the whole of it, never over the latest message alone. */
@@ -104,7 +113,7 @@ export default function Onboarding() {
     if (transcript.current.length === 0) setOpeningAnswered(true);
     setSelectedTraits([]);
     setAskingIntent(false);
-    setAskingAvailability(false);
+    setAskingTopic(null);
     setMessages((m) => [...m, { from: "user", text: said }]);
     transcript.current.push(said);
     setThinking(true);
@@ -115,18 +124,23 @@ export default function Onboarding() {
     // finished before the reply appears.
     await new Promise((resolve) => setTimeout(resolve, AGENT_DELAY_MS));
 
-    setChips(turn.chips);
+    const merged = [...chips, ...turn.chips].filter(
+        (chip, index, all) =>
+          all.findIndex(
+            (candidate) => candidate.kind === chip.kind && candidate.label === chip.label,
+          ) === index,
+      );
+    setChips(merged);
     setThinking(false);
 
-    if (turn.followUp) {
-      setMessages((m) => [...m, { from: "agent", text: turn.followUp! }]);
-      // Ask one thing at a time. When both are unresolved, intent comes first;
-      // availability appears only after that answer has been processed.
-      const needsIntent = turn.unresolved.includes("intent");
+    const next = REQUIRED_TOPICS.find(
+      ({ kind }) => !merged.some((chip) => chip.kind === kind),
+    );
+    if (next) {
+      setMessages((m) => [...m, { from: "agent", text: next.question }]);
+      const needsIntent = next.topic === "intent";
       setAskingIntent(needsIntent);
-      setAskingAvailability(
-        !needsIntent && turn.unresolved.includes("availability"),
-      );
+      setAskingTopic(next.topic);
     } else {
       setMessages((m) => [...m, { from: "agent", text: COMPLETE }]);
       setComplete(true);
@@ -144,19 +158,40 @@ export default function Onboarding() {
     );
   };
 
-  const stage = !openingAnswered ? 1 : askingAvailability || complete ? 3 : 2;
+  const stage = complete
+    ? 5
+    : Math.max(1, REQUIRED_TOPICS.findIndex(({ topic }) => topic === askingTopic) + 1);
   const composerPlaceholder = !openingAnswered
     ? "Or describe yourself in your own words"
     : askingIntent
       ? "Or type what you are looking for"
-      : askingAvailability
-        ? "Or describe when you are usually free"
-        : "Add anything else you want Spark to know";
+      : askingTopic === "interests"
+        ? "Tell us about your interests"
+        : askingTopic === "characteristics"
+          ? "Describe your characteristics"
+          : askingTopic === "values"
+            ? "Share what matters to you"
+            : askingTopic === "languages"
+              ? "List the languages you speak"
+              : "Add anything else you want Spark to know";
 
   if (!verificationComplete) {
+    if (foreignerSignup) {
+      return (
+        <ForeignerSignup
+          onBack={() => setForeignerSignup(false)}
+          onComplete={(result) => {
+            setChips(result.chips);
+            setProfilePhoto(result.profilePhoto);
+            setVerificationComplete(true);
+          }}
+        />
+      );
+    }
     return (
       <SingpassVerification
         onComplete={() => setVerificationComplete(true)}
+        onForeigner={() => setForeignerSignup(true)}
       />
     );
   }
@@ -195,8 +230,8 @@ export default function Onboarding() {
         ) : (
           <div className="flex flex-col gap-3">
             {askingIntent ? <IntentChoice onChoose={send} /> : null}
-            {askingAvailability ? (
-              <AvailabilityChoice onChoose={send} />
+            {askingTopic && askingTopic !== "intent" ? (
+              <TopicChoice topic={askingTopic} onChoose={send} />
             ) : null}
             <Composer
               value={draft}
@@ -218,12 +253,12 @@ export default function Onboarding() {
 
 /** Colour per kind, so the panel reads as structure rather than a word cloud. */
 const CHIP_STYLE: Record<ChipKind, string> = {
-  intent: "bg-accent/25 text-accent-soft ring-accent/30",
-  trait: "bg-violet-400/10 text-violet-200 ring-violet-400/20",
-  interest: "bg-white/[0.06] text-text/90 ring-white/10",
-  value: "bg-sky-400/10 text-sky-200 ring-sky-400/20",
-  availability: "bg-amber-400/10 text-amber-200 ring-amber-400/20",
-  language: "bg-emerald-400/10 text-emerald-200 ring-emerald-400/20",
+  intent: "bg-navy text-cream ring-navy",
+  trait: "bg-peach/65 text-ink ring-clay/25",
+  interest: "bg-cream text-navy ring-navy/15",
+  value: "bg-clay/15 text-clay ring-clay/25",
+  availability: "bg-peach text-navy ring-clay/20",
+  language: "bg-emerald-100 text-emerald-800 ring-emerald-300",
 };
 
 function ChipPanel({
@@ -293,7 +328,7 @@ function Bubble({
       <p
         className={
           fromAgent
-            ? "max-w-[80%] rounded-card rounded-bl-md bg-surface px-4 py-3 text-[15px] leading-relaxed text-text/90"
+            ? "max-w-[80%] rounded-card rounded-bl-md bg-surface px-4 py-3 text-[15px] leading-relaxed text-text ring-1 ring-navy/10 ring-inset"
             : "max-w-[80%] rounded-card rounded-br-md bg-accent/90 px-4 py-3 text-[15px] leading-relaxed text-cream"
         }
       >
@@ -327,9 +362,9 @@ function OnboardingProgress({
   stage: number;
   thinking: boolean;
 }) {
-  const labels = ["About you", "What you want", "Availability"];
+  const labels = ["Intent", "Interests", "Characteristics", "Values", "Languages"];
   return (
-    <div className="pb-1" aria-label={`Onboarding step ${stage} of 3`}>
+    <div className="pb-1" aria-label={`Onboarding step ${stage} of 5`}>
       <div className="mb-2 flex gap-1.5" aria-hidden="true">
         {labels.map((label, index) => (
           <span
@@ -338,8 +373,8 @@ function OnboardingProgress({
           />
         ))}
       </div>
-      <p className="text-[11px] font-medium tracking-[0.12em] text-muted uppercase">
-        {thinking ? "Understanding your reply" : `Step ${stage} of 3 · ${labels[stage - 1]}`}
+      <p className="text-[11px] font-semibold tracking-[0.12em] text-navy uppercase">
+        {thinking ? "Understanding your reply" : `Step ${stage} of 5 · ${labels[stage - 1]}`}
       </p>
     </div>
   );
@@ -493,37 +528,23 @@ function IntentChoice({ onChoose }: { onChoose: (text: string) => void }) {
   );
 }
 
-/**
- * Availability is one of six backend time buckets, not open-ended prose.
- * Showing the whole vocabulary avoids the loop where answers such as "9" or
- * "3 minutes" were valid human responses but matched none of the extractor's
- * hidden phrases, causing the same question to repeat indefinitely.
- */
-const AVAILABILITY_SENTENCES = [
-  ["Early morning", "I am usually free in the early morning."],
-  ["Morning", "I am usually free in the morning."],
-  ["Midday", "I am usually free around midday."],
-  ["Afternoon", "I am usually free in the afternoon."],
-  ["Evening", "I am usually free in the evening."],
-  ["Night", "I am usually free at night."],
-] as const;
+const TOPIC_OPTIONS: Record<string, string[]> = {
+  interests: ["Coffee", "Reading", "Cooking", "Running", "Photography", "Live music"],
+  characteristics: ["Curious", "Creative", "Outgoing", "Calm", "Playful", "Thoughtful"],
+  values: ["Honesty", "Kindness", "Ambition", "Family", "Humour", "Curiosity"],
+  languages: ["English", "Mandarin", "Malay", "Tamil", "Cantonese", "Hokkien"],
+};
 
-function AvailabilityChoice({
-  onChoose,
-}: {
-  onChoose: (text: string) => void;
-}) {
+function TopicChoice({ topic, onChoose }: { topic: string; onChoose: (text: string) => void }) {
+  const options = TOPIC_OPTIONS[topic] ?? [];
   return (
-    <div
-      className="grid grid-cols-2 gap-2"
-      aria-label="Choose when you are usually free"
-    >
-      {AVAILABILITY_SENTENCES.map(([label, sentence]) => (
+    <div className="grid grid-cols-2 gap-2" aria-label={`Choose ${topic}`}>
+      {options.map((label) => (
         <button
           key={label}
           type="button"
-          onClick={() => onChoose(sentence)}
-          className="rounded-card bg-surface px-4 py-3.5 text-sm text-text ring-1 ring-white/[0.06] ring-inset transition-colors hover:bg-white/[0.07]"
+          onClick={() => onChoose(label)}
+          className="rounded-card bg-surface px-4 py-3.5 text-sm font-medium text-text ring-1 ring-navy/15 ring-inset transition-colors hover:bg-cream"
         >
           {label}
         </button>

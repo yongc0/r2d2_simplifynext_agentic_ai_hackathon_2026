@@ -7,9 +7,44 @@ import type {
   ContinuityBrief,
   EncounterCard,
   LockIn,
+  Itinerary,
   ProfileChip,
   RevealedPerson,
 } from "../api/types";
+
+export interface SavedPlan {
+  lockInId: string;
+  itinerary: Itinerary;
+}
+
+export type IdeaInviteStatus = "none" | "sent" | "accepted" | "declined";
+
+export interface SharedDateIdea {
+  ideaId: string;
+  lockInId: string;
+  title: string;
+  detail: string;
+  proposedBy: "you" | "them";
+  likedByYou: boolean;
+  likedByThem: boolean;
+  inviteStatus: IdeaInviteStatus;
+}
+
+export interface ChatAttachment {
+  kind: "photo" | "voice" | "document";
+  name: string;
+  mimeType: string;
+  dataUrl?: string;
+}
+
+export interface ChatMessage {
+  messageId: string;
+  from: "you" | "them";
+  text: string;
+  sentAt: string;
+  attachment?: ChatAttachment;
+  moderated?: boolean;
+}
 
 /**
  * One store. FRONTEND.md §2: "No state library beyond Zustand", one store,
@@ -45,6 +80,11 @@ interface SparkState {
   // --- the weeks afterwards -----------------------------------------
   lockIns: LockIn[];
   briefs: ContinuityBrief[];
+  /** Session-scoped until authenticated persistence/realtime is connected. */
+  profilePhoto: string | null;
+  savedPlans: SavedPlan[];
+  sharedDateIdeas: SharedDateIdea[];
+  chats: Record<string, ChatMessage[]>;
 
   // --- safety ---------------------------------------------------------
   /** Set when someone answers Guardian's check-in with "something felt off".
@@ -73,6 +113,12 @@ interface SparkState {
   setConsentOutcome: (outcome: ConsentOutcome | null) => void;
   setLockIns: (lockIns: LockIn[]) => void;
   setBriefs: (briefs: ContinuityBrief[]) => void;
+  setProfilePhoto: (photo: string | null) => void;
+  savePlan: (plan: SavedPlan) => void;
+  proposeDateIdea: (idea: Omit<SharedDateIdea, "ideaId" | "likedByYou" | "likedByThem" | "inviteStatus">) => string;
+  toggleIdeaLike: (ideaId: string, party: "you" | "them") => void;
+  setIdeaInviteStatus: (ideaId: string, status: IdeaInviteStatus) => void;
+  sendChatMessage: (lockInId: string, message: Omit<ChatMessage, "messageId" | "sentAt">) => void;
   flagGuardianConcern: () => void;
   pushEvent: (event: AgentEvent) => void;
   toggleDirector: () => void;
@@ -90,6 +136,10 @@ const INITIAL = {
   consentOutcome: null,
   lockIns: [],
   briefs: [],
+  profilePhoto: null,
+  savedPlans: [],
+  sharedDateIdeas: [],
+  chats: {},
   guardianConcern: false,
   events: [],
   directorOpen: false,
@@ -109,6 +159,66 @@ export const useSpark = create<SparkState>((set) => ({
   setConsentOutcome: (consentOutcome) => set({ consentOutcome }),
   setLockIns: (lockIns) => set({ lockIns }),
   setBriefs: (briefs) => set({ briefs }),
+  setProfilePhoto: (profilePhoto) => set({ profilePhoto }),
+  savePlan: (plan) =>
+    set((state) => ({
+      savedPlans: [
+        plan,
+        ...state.savedPlans.filter(
+          (saved) => saved.itinerary.itineraryId !== plan.itinerary.itineraryId,
+        ),
+      ],
+    })),
+  proposeDateIdea: (idea) => {
+    const ideaId = `idea-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    set((state) => ({
+      sharedDateIdeas: state.sharedDateIdeas.some(
+        (item) => item.lockInId === idea.lockInId && item.title === idea.title,
+      )
+        ? state.sharedDateIdeas
+        : [
+            {
+              ...idea,
+              ideaId,
+              likedByYou: idea.proposedBy === "you",
+              likedByThem: idea.proposedBy === "them",
+              inviteStatus: "none" as const,
+            },
+            ...state.sharedDateIdeas,
+          ],
+    }));
+    return ideaId;
+  },
+  toggleIdeaLike: (ideaId, party) =>
+    set((state) => ({
+      sharedDateIdeas: state.sharedDateIdeas.map((idea) =>
+        idea.ideaId !== ideaId
+          ? idea
+          : party === "you"
+            ? { ...idea, likedByYou: !idea.likedByYou }
+            : { ...idea, likedByThem: !idea.likedByThem },
+      ),
+    })),
+  setIdeaInviteStatus: (ideaId, inviteStatus) =>
+    set((state) => ({
+      sharedDateIdeas: state.sharedDateIdeas.map((idea) =>
+        idea.ideaId === ideaId ? { ...idea, inviteStatus } : idea,
+      ),
+    })),
+  sendChatMessage: (lockInId, message) =>
+    set((state) => ({
+      chats: {
+        ...state.chats,
+        [lockInId]: [
+          ...(state.chats[lockInId] ?? []),
+          {
+            ...message,
+            messageId: `message-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            sentAt: new Date().toISOString(),
+          },
+        ],
+      },
+    })),
 
   flagGuardianConcern: () => set({ guardianConcern: true }),
 

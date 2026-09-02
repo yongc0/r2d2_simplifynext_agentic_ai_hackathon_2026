@@ -204,7 +204,7 @@ export function SettingsPanel() {
             })}
           </div>
           {profile.availabilityWindow.length === 0 ? (
-            <p className="mt-2 text-[11px] leading-relaxed text-amber-200/80">
+            <p className="mt-2 text-[11px] font-medium leading-relaxed text-amber-900">
               With no times selected there is no slot you can be matched in.
             </p>
           ) : null}

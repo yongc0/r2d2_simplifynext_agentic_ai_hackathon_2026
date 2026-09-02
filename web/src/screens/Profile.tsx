@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, X } from "lucide-react";
+import { Camera, Plus, X } from "lucide-react";
 
 import { getAdapter } from "../api/adapter";
 import { NAV_HEIGHT_CLASS } from "../components/AppNav";
@@ -28,10 +28,8 @@ import { useSpark } from "../store/useSpark";
  * with nothing preselected. Changing it is a deliberate act, not something that
  * drifts as a side effect of editing interests.
  *
- * NO HEIGHT, APPEARANCE OR PHOTO — invariant 9.5. There is no such field, no
- * upload, and `ChipKind` has no member one could be rendered as. The interest
- * list below is the fixed vocabulary from `extract.ts`, so a physical attribute
- * cannot be typed in either: there is nothing to type into.
+ * Height and appearance are not ranking fields. A voluntary profile photo is
+ * kept behind the mutual-reveal boundary and shown only to lock-ins.
  *
  * IT IS NOT A UI-ONLY PREFERENCES PAGE. Every edit here is written through to
  * the same `Profile` the Match Agent reads, so changing an interest changes the
@@ -47,8 +45,31 @@ export default function Profile() {
   const navigate = useNavigate();
   const chips = useSpark((s) => s.chips);
   const setChips = useSpark((s) => s.setChips);
+  const profilePhoto = useSpark((s) => s.profilePhoto);
+  const setProfilePhoto = useSpark((s) => s.setProfilePhoto);
   const [editing, setEditing] = useState<ChipKind | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
+  const uploadPhoto = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("Choose an image file.");
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setPhotoError("Profile photos must be smaller than 4 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setProfilePhoto(reader.result);
+        setPhotoError(null);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const has = (kind: ChipKind, label: string) =>
     chips.some((c) => c.kind === kind && c.label === label);
@@ -147,6 +168,28 @@ export default function Profile() {
         </div>
       ) : (
         <div className="flex flex-col gap-6">
+          <Section
+            title="Profile photo"
+            note="Visible only after you and another person both choose to reveal."
+          >
+            <div className="flex items-center gap-4 rounded-card bg-surface p-4 ring-1 ring-navy/10 ring-inset">
+              {profilePhoto ? (
+                <img src={profilePhoto} alt="Your profile" className="size-20 rounded-full object-cover ring-2 ring-peach" />
+              ) : (
+                <div className="grid size-20 shrink-0 place-items-center rounded-full bg-peach/45 text-navy"><Camera size={24} /></div>
+              )}
+              <div className="min-w-0 flex-1">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-pill bg-navy px-4 py-2.5 text-xs font-semibold text-cream">
+                  <Camera size={14} /> {profilePhoto ? "Change photo" : "Upload photo"}
+                  <input type="file" accept="image/*" className="sr-only" onChange={(event) => uploadPhoto(event.target.files?.[0])} />
+                </label>
+                {profilePhoto ? <button type="button" onClick={() => setProfilePhoto(null)} className="mt-2 block text-[11px] font-medium text-clay">Remove photo</button> : null}
+                <p className="mt-2 text-[10px] leading-relaxed text-muted">JPG, PNG or WebP · up to 4 MB</p>
+              </div>
+            </div>
+            {photoError ? <p role="alert" className="mt-2 text-xs text-clay">{photoError}</p> : null}
+          </Section>
+
           {/* --- what you are here for ------------------------------------ */}
           <Section
             title="What you are here for"
@@ -243,7 +286,7 @@ export default function Profile() {
 
           <Section
             title="Not here, on purpose"
-            note="Spark has no height, photo or appearance field, and will not add one. Removing judgement-by-photograph is the point of the product."
+            note="Spark has no height or appearance-ranking field. Your photo is never shown before a mutual reveal."
           >
             <></>
           </Section>

@@ -5,7 +5,8 @@ import { useNavigate } from "react-router-dom";
 
 import { getAdapter } from "../api/adapter";
 import { PlanTheDateButton } from "../components/PlanTheDateButton";
-import { Avatar } from "../components/Avatar";
+import { PersonAvatar } from "../components/PersonAvatar";
+import { MessageCircle } from "lucide-react";
 import type { ContinuityBrief, LockIn } from "../api/types";
 import { NAV_HEIGHT_CLASS } from "../components/AppNav";
 import { useSpark } from "../store/useSpark";
@@ -79,7 +80,7 @@ export default function LockIns() {
       </header>
 
       {error ? (
-        <p className="mb-4 rounded-card bg-rose-500/10 px-4 py-3 text-xs leading-relaxed text-rose-200 ring-1 ring-rose-400/20 ring-inset">
+        <p className="mb-4 rounded-card bg-rose-100 px-4 py-3 text-xs font-medium leading-relaxed text-rose-800 ring-1 ring-rose-300 ring-inset">
           {error}
         </p>
       ) : null}
@@ -128,10 +129,15 @@ function Slot({
       }`}
     >
       <div className="flex items-start gap-3">
-        <Avatar seed={lockIn.person.avatarSeed} size={44} />
+        <PersonAvatar
+          photo={lockIn.person.profilePhoto}
+          seed={lockIn.person.avatarSeed}
+          name={lockIn.person.displayName}
+          size={44}
+        />
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-center gap-2">
             <h2 className="truncate text-base font-medium text-text">
               {lockIn.person.displayName}
             </h2>
@@ -139,6 +145,16 @@ function Slot({
                 days, not a prompt to do something about it. */}
             {quiet ? (
               <span className="shrink-0 text-[11px] text-muted">quiet</span>
+            ) : null}
+            {!released ? (
+              <button
+                type="button"
+                onClick={() => navigate(`/lockins/${lockIn.lockInId}/chat`)}
+                aria-label={`Chat with ${lockIn.person.displayName}`}
+                className="ml-auto grid size-9 shrink-0 place-items-center rounded-full bg-navy text-cream transition-transform hover:scale-105"
+              >
+                <MessageCircle size={16} aria-hidden="true" />
+              </button>
             ) : null}
           </div>
           <p className="text-xs text-muted">{connectedLabel(lockIn)}</p>

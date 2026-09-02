@@ -23,7 +23,6 @@ import App from "../App";
 import { MockAdapter } from "../api/mock";
 import { setAdapter } from "../api/adapter";
 import { CONTINUITY_CITATION } from "../api/callFixture";
-import { windowStatus } from "../screens/Home";
 import { useSpark } from "../store/useSpark";
 import { scanForLocation } from "./scanners";
 
@@ -80,19 +79,12 @@ describe("/home — the waiting state", () => {
     }
   });
 
-  it("counts down to the window rather than to a number that looks good", async () => {
+  it("waits without a countdown for a spontaneous encounter", async () => {
     renderAt("/home");
     await screen.findByText(/one person a day/i);
-    // The window has THREE phases and this test used to know about two, so it
-    // failed for anyone running the suite after 10pm — a test that depends on
-    // the wall clock and does not say so is worse than no test.
-    //
-    // All three are true statements about the same clock, so the assertion is
-    // that the screen says one of them rather than which one.
     const text = document.body.textContent ?? "";
-    expect(text).toMatch(
-      /window (opens at 9:00pm|is open)|tonight's window has closed/i,
-    );
+    expect(text).toMatch(/arrive spontaneously|crossed your path/i);
+    expect(text).not.toMatch(/\d{2}:\d{2}:\d{2}/);
   });
 
   it("renders no location", async () => {
@@ -222,7 +214,7 @@ describe("the full mock path", () => {
     renderAt("/home");
 
     fireEvent.click(
-      await screen.findByRole("button", { name: /open tonight's encounter/i }),
+      await screen.findByRole("button", { name: /start the encounter/i }),
     );
 
     fireEvent.click(await screen.findByRole("button", { name: /^accept$/i }));
@@ -285,40 +277,11 @@ describe("demo controls", () => {
 // The encounter window closes
 // ---------------------------------------------------------------------------
 
-describe("the evening window", () => {
-  // It used to open at 9pm and never shut: the countdown returned zero for
-  // everything after 21:00, so the app reported an open window at four in the
-  // morning. Scarcity is the product; a window that never closes is a feed.
-
-  const at = (hour: number, minute = 0) =>
-    new Date(2026, 8, 3, hour, minute, 0, 0);
-
-  it("counts down before it opens", () => {
-    const status = windowStatus(at(18, 30));
-    expect(status.phase).toBe("before");
-    expect(status.msRemaining).toBe(150 * 60_000);
-  });
-
-  it("is open between 9pm and 10pm, counting down to the close", () => {
-    expect(windowStatus(at(21, 0)).phase).toBe("open");
-    const late = windowStatus(at(21, 45));
-    expect(late.phase).toBe("open");
-    expect(late.msRemaining).toBe(15 * 60_000);
-  });
-
-  it("closes at 10pm and waits for tomorrow", () => {
-    for (const hour of [22, 23]) {
-      expect(windowStatus(at(hour)).phase, `${hour}:00`).toBe("closed");
-    }
-    // 23:00 -> 21:00 the next day is 22 hours.
-    expect(windowStatus(at(23)).msRemaining).toBe(22 * 3_600_000);
-  });
-
-  it("counts down again in the small hours rather than claiming to be open", () => {
-    // The specific hour the old logic got wrong.
-    const status = windowStatus(at(4));
-    expect(status.phase).toBe("before");
-    expect(status.msRemaining).toBe(17 * 3_600_000);
+describe("spontaneous encounters", () => {
+  it("shows no countdown while waiting", async () => {
+    renderAt("/home");
+    expect(await screen.findByText(/next encounter will arrive spontaneously/i)).toBeVisible();
+    expect(screen.queryByText(/^\d{2}:\d{2}:\d{2}$/)).not.toBeInTheDocument();
   });
 });
 

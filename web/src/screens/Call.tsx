@@ -287,7 +287,7 @@ export default function Call() {
         <button
           type="button"
           onClick={endCall}
-          className="rounded-pill bg-rose-500/15 px-7 py-3 text-sm font-medium text-rose-200 ring-1 ring-rose-400/20 ring-inset transition-colors hover:bg-rose-500/25"
+          className="rounded-pill bg-red-600 px-7 py-3 text-sm font-semibold text-white ring-1 ring-red-700 ring-inset transition-colors hover:bg-red-700"
         >
           End call
         </button>

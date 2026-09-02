@@ -6,6 +6,8 @@ import { Avatar } from "../components/Avatar";
 import { DateMemoryPanel } from "../components/DateMemoryPanel";
 import { NAV_HEIGHT_CLASS } from "../components/AppNav";
 import type { DateMemory, PlanLockIn } from "../api/types";
+import { useSpark } from "../store/useSpark";
+import { CalendarCheck, HeartHandshake } from "lucide-react";
 
 /**
  * `/plans` — the Date Studio hub.
@@ -30,16 +32,23 @@ export default function Plans() {
   const [lockIns, setLockIns] = useState<PlanLockIn[] | null>(null);
   const [memory, setMemory] = useState<DateMemory[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const savedPlans = useSpark((state) => state.savedPlans);
+  const savePlan = useSpark((state) => state.savePlan);
+  const sharedIdeas = useSpark((state) => state.sharedDateIdeas);
 
   const load = async () => {
     try {
       const adapter = getAdapter();
-      const [connections, remembered] = await Promise.all([
+      const [connections, remembered, itineraries] = await Promise.all([
         adapter.getPlanLockIns(),
         adapter.getDateMemory(),
+        adapter.getItineraries(),
       ]);
       setLockIns(connections);
       setMemory(remembered);
+      itineraries.forEach((itinerary) =>
+        savePlan({ lockInId: itinerary.lockInId, itinerary }),
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
       setLockIns([]);
@@ -58,22 +67,37 @@ export default function Plans() {
         <p className="mt-1.5 text-sm leading-relaxed text-muted">
           Something to do with the people you have already met.
         </p>
-        <button
-          type="button"
-          onClick={() => navigate("/plans/history")}
-          className="mt-3 rounded-full bg-white/[0.07] px-3 py-1.5 text-xs text-text transition-colors hover:bg-white/[0.12]"
-        >
-          Your dates →
-        </button>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => navigate("/plans/ideas")} className="inline-flex items-center justify-center gap-1.5 rounded-pill bg-navy px-3 py-2.5 text-xs font-semibold text-cream">
+            <HeartHandshake size={14} /> Shared ideas {sharedIdeas.length ? `(${sharedIdeas.length})` : ""}
+          </button>
+          <button type="button" onClick={() => navigate("/plans/history")} className="inline-flex items-center justify-center gap-1.5 rounded-pill bg-cream px-3 py-2.5 text-xs font-semibold text-navy ring-1 ring-navy/15 ring-inset">
+            <CalendarCheck size={14} /> Your dates
+          </button>
+        </div>
       </header>
 
       {error ? (
-        <p className="mb-4 rounded-card bg-rose-500/10 px-4 py-3 text-xs leading-relaxed text-rose-200 ring-1 ring-rose-400/20 ring-inset">
+        <p className="mb-4 rounded-card bg-rose-100 px-4 py-3 text-xs font-medium leading-relaxed text-rose-800 ring-1 ring-rose-300 ring-inset">
           {error}
         </p>
       ) : null}
 
       <div className="no-scrollbar flex flex-1 flex-col gap-3 overflow-y-auto">
+        {savedPlans.length > 0 ? (
+          <section aria-labelledby="saved-plans" className="mb-2">
+            <h2 id="saved-plans" className="mb-2 text-[10px] font-semibold tracking-[0.18em] text-navy/65 uppercase">Saved plans</h2>
+            <div className="flex flex-col gap-2">
+              {savedPlans.map(({ itinerary }) => (
+                <button key={itinerary.itineraryId} type="button" onClick={() => navigate("/plans/history")} className="rounded-card bg-peach/30 p-4 text-left ring-1 ring-clay/20 ring-inset">
+                  <span className="block text-sm font-semibold text-text">{itinerary.headline}</span>
+                  <span className="mt-1 block text-xs text-muted">{itinerary.dayLabel} · {itinerary.totalDurationMinutes} min · {itinerary.totalCostEstimate}</span>
+                  <span className="mt-2 block text-[10px] font-semibold tracking-wide text-clay uppercase">Added from Date Studio</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
         {lockIns === null ? (
           // Explicit loading state. A blank screen that might be empty and
           // might be broken is the worst of both.

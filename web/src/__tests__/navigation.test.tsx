@@ -178,9 +178,9 @@ describe("/profile", () => {
     renderAt("/home");
 
     expect(
-      await screen.findByRole("heading", { name: /how tonight works/i }),
+      await screen.findByRole("heading", { name: /how encounters work/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText("9:00pm")).toBeInTheDocument();
+    expect(screen.getByText("Any moment")).toBeInTheDocument();
     expect(screen.getByText("Three minutes")).toBeInTheDocument();
     expect(screen.getByText("You both choose")).toBeInTheDocument();
   });
@@ -338,14 +338,14 @@ describe("/profile", () => {
     });
   });
 
-  it("offers no height, photo or appearance field", async () => {
+  it("offers a post-reveal photo but no height or appearance field", async () => {
     // INVARIANT 5. The vocabulary is the fixed list from `extract.ts`, so
     // there is nothing to type into either.
     useSpark.getState().setChips([{ kind: "interest", label: "Coffee" }]);
     const { container } = renderAt("/profile");
     await screen.findByText("Coffee");
 
-    expect(container.querySelector('input[type="file"]')).toBeNull();
+    expect(container.querySelector('input[type="file"]')).not.toBeNull();
     expect(container.querySelector('input[type="text"]')).toBeNull();
     expect(container.querySelector("textarea")).toBeNull();
     expect(container.querySelector('input[type="range"]')).toBeNull();
@@ -358,7 +358,7 @@ describe("/profile", () => {
         control.textContent ?? "",
         control.getAttribute("aria-label") ?? "",
       ].join(" ");
-      expect(name).not.toMatch(/(height|tall|photo|selfie|upload|body|weight)/i);
+      expect(name).not.toMatch(/(height|tall|body|weight)/i);
     }
   });
 

@@ -22,6 +22,8 @@ import LockIns from "./screens/LockIns";
 import Onboarding from "./screens/Onboarding";
 import Reveal from "./screens/Reveal";
 import AdminProfiles from "./screens/AdminProfiles";
+import SharedDateIdeas from "./screens/SharedDateIdeas";
+import Chat from "./screens/Chat";
 
 /**
  * Routes map one-to-one onto the encounter's life, so the client and the
@@ -63,6 +65,7 @@ export default function App() {
         <Route path="/call/consent" element={<Consent />} />
         <Route path="/reveal" element={<Reveal />} />
         <Route path="/lockins" element={<LockIns />} />
+        <Route path="/lockins/:lockInId/chat" element={<Chat />} />
         <Route path="/profile" element={<Profile />} />
         <Route
           path="/admin/profiles"
@@ -77,6 +80,7 @@ export default function App() {
             lock-in id. React Router ranks it correctly, and the order here
             says so to anyone reading. */}
         <Route path="/plans/history" element={<DateHistory />} />
+        <Route path="/plans/ideas" element={<SharedDateIdeas />} />
         <Route path="/plans/:lockInId" element={<DateStudio />} />
         {/* Kept as a compatibility route into the same feature. There is one
             implementation; this is a way in, not a second one. */}

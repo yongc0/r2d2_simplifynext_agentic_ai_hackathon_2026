@@ -80,7 +80,7 @@ export default function Dates() {
 
       <div className="no-scrollbar mt-6 flex flex-1 flex-col gap-3 overflow-y-auto">
         {error ? (
-          <p className="rounded-card bg-rose-500/10 px-4 py-3 text-xs leading-relaxed text-rose-200 ring-1 ring-rose-400/20 ring-inset">
+          <p className="rounded-card bg-rose-100 px-4 py-3 text-xs font-medium leading-relaxed text-rose-800 ring-1 ring-rose-300 ring-inset">
             {error}
           </p>
         ) : null}
@@ -148,7 +148,7 @@ function PathCard({
               {stop.isCommercialPartner ? (
                 // Beside the venue, in the same sentence. §13.6 — a partner
                 // venue is disclosed where it is read, not in a footnote.
-                <span className="ml-1.5 rounded-full bg-amber-400/10 px-2 py-0.5 text-[10px] text-amber-200 ring-1 ring-amber-400/20 ring-inset">
+                <span className="ml-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900 ring-1 ring-amber-300 ring-inset">
                   Spark partner
                 </span>
               ) : null}

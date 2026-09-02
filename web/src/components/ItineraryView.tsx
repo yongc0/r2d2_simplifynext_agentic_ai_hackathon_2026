@@ -225,7 +225,7 @@ function OpeningState({ stop }: { stop: ItineraryStop }) {
     );
   }
   return (
-    <p className="text-[11px] text-amber-200/80">
+    <p className="text-[11px] font-medium text-amber-900">
       Opening hours are not recorded for this venue — worth checking before you
       go.
     </p>

@@ -277,53 +277,39 @@ describe("intent is never inferred", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Availability uses the fixed backend vocabulary
+// The requested profile topics are asked explicitly
 // ---------------------------------------------------------------------------
 
-describe("availability choices", () => {
-  it("waits until intent is answered before showing time choices", async () => {
+describe("profile topic choices", () => {
+  it("asks about values after intent, interests and characteristics are known", async () => {
     renderOnboarding();
     await say("I am outgoing and I enjoy coffee.");
 
     await screen.findByLabelText("Choose what you are looking for");
-    expect(
-      screen.queryByLabelText("Choose when you are usually free"),
-    ).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Friends" }));
 
     expect(
-      await screen.findByLabelText("Choose when you are usually free"),
+      await screen.findByLabelText("Choose values"),
     ).toBeVisible();
     expect(
       screen.queryByLabelText("Choose what you are looking for"),
     ).toBeNull();
   }, 15_000);
 
-  it("shows every valid time bucket and completes from one click", async () => {
+  it("asks for characteristics, values and languages without an availability question", async () => {
     renderOnboarding();
     await say("I like coffee and I am looking for something long term.");
 
-    const chooser = await screen.findByLabelText(
-      "Choose when you are usually free",
-    );
-    for (const option of [
-      "Early morning",
-      "Morning",
-      "Midday",
-      "Afternoon",
-      "Evening",
-      "Night",
-    ]) {
-      expect(
-        screen.getByRole("button", { name: option }),
-      ).toBeVisible();
-    }
+    await screen.findByLabelText("Choose characteristics");
+    fireEvent.click(screen.getByRole("button", { name: "Thoughtful" }));
+    await screen.findByLabelText("Choose values");
+    fireEvent.click(screen.getByRole("button", { name: "Honesty" }));
+    await screen.findByLabelText("Choose languages");
+    fireEvent.click(screen.getByRole("button", { name: "English" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Evening" }));
-
-    await waitFor(() => expect(chipPanel()).toHaveTextContent("Evening"));
-    expect(chooser).not.toBeInTheDocument();
+    await waitFor(() => expect(chipPanel()).toHaveTextContent("English"));
+    expect(screen.queryByText(/which part of the day/i)).not.toBeInTheDocument();
     expect(
       await screen.findByRole("button", { name: "Continue" }),
     ).toBeVisible();
@@ -364,7 +350,7 @@ describe("invariant 5 — nothing physical is ever captured", () => {
         "I am tall and athletic with a good photo, and I like yoga.",
       ),
     );
-    expect(chips.map((c) => c.label)).toEqual(["Yoga", "English"]);
+    expect(chips.map((c) => c.label)).toEqual(["Yoga"]);
   });
 });
 

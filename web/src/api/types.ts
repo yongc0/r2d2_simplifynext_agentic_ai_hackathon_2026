@@ -64,14 +64,14 @@ export interface EncounterCard {
 /**
  * The only object in the client that carries an identity.
  *
- * Constructed exclusively from a mutual-yes reveal. `avatarSeed` drives a
- * generated illustration (INVARIANT 7) — it is never a photograph, and there is
- * no field here that could hold a URL to one.
+ * Constructed exclusively from a mutual-yes reveal. A profile photo is
+ * optional and is only exposed after that reveal gate has opened.
  */
 export interface RevealedPerson {
   personId: string;
   displayName: string;
   avatarSeed: string;
+  profilePhoto?: string;
   sharedInterests: string[];
 }
 

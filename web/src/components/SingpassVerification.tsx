@@ -14,8 +14,10 @@ type Step = "intro" | "consent" | "verified";
 
 export function SingpassVerification({
   onComplete,
+  onForeigner,
 }: {
   onComplete: () => void;
+  onForeigner?: () => void;
 }) {
   const reduced = useReducedMotion();
   const [step, setStep] = useState<Step>("intro");
@@ -70,6 +72,11 @@ export function SingpassVerification({
               >
                 Verify with Singpass demo
               </button>
+              {onForeigner ? (
+                <button type="button" onClick={onForeigner} className="mt-2 w-full rounded-pill bg-cream px-6 py-3.5 text-sm font-semibold text-navy ring-1 ring-navy/15 ring-inset">
+                  Sign up as a foreigner
+                </button>
+              ) : null}
               <p className="mt-3 text-center text-[11px] leading-relaxed text-muted/70">
                 Simulation only · no external service is contacted
               </p>
@@ -186,7 +193,7 @@ export function SingpassVerification({
 
 function DemoBadge() {
   return (
-    <span className="rounded-pill bg-amber-300/10 px-3 py-1.5 text-[10px] font-medium tracking-[0.14em] text-amber-200 uppercase ring-1 ring-amber-300/20 ring-inset">
+    <span className="rounded-pill bg-peach/45 px-3 py-1.5 text-[10px] font-semibold tracking-[0.14em] text-navy uppercase ring-1 ring-clay/20 ring-inset">
       Simulated
     </span>
   );

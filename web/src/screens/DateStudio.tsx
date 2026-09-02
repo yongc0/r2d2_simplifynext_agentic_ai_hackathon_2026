@@ -17,6 +17,7 @@ import type {
   PlanDuration,
   RejectionReason,
 } from "../api/types";
+import { useSpark } from "../store/useSpark";
 
 /**
  * `/plans/:lockInId` — the planner for one connection.
@@ -73,6 +74,8 @@ const ENERGIES: [Energy, string][] = [
 export default function DateStudio() {
   const { lockInId = "" } = useParams();
   const navigate = useNavigate();
+  const savePlan = useSpark((state) => state.savePlan);
+  const proposeDateIdea = useSpark((state) => state.proposeDateIdea);
 
   const [prefs, setPrefs] = useState<DatePreferences | null>(null);
   const [remember, setRemember] = useState(false);
@@ -111,6 +114,13 @@ export default function DateStudio() {
       });
       if (result.itinerary) {
         setItineraries((current) => ({ ...current, [pathId]: result.itinerary! }));
+        savePlan({ lockInId, itinerary: result.itinerary });
+        proposeDateIdea({
+          lockInId,
+          title: result.itinerary.headline,
+          detail: `${result.itinerary.dayLabel} · ${result.itinerary.totalDurationMinutes} minutes · ${result.itinerary.totalCostEstimate}`,
+          proposedBy: "you",
+        });
       } else {
         setBindingProblem((current) => ({ ...current, [pathId]: result.reason }));
       }
@@ -193,6 +203,15 @@ export default function DateStudio() {
     await getAdapter().sendDateFeedback(planId, action, reasons);
     if (action === "saved") {
       setSaved((current) => new Set(current).add(planId));
+      const path = paths?.find((item) => item.pathId === planId);
+      if (path) {
+        proposeDateIdea({
+          lockInId,
+          title: path.headline,
+          detail: `${path.durationBand.replace(/_/g, " ")} · ${path.budgetBand.replace(/_/g, " ")} · ${path.proposedBucket.replace(/_/g, " ")}`,
+          proposedBy: "you",
+        });
+      }
     } else {
       // Regenerate, so the effect of the rejection is visible immediately
       // rather than the next time somebody happens to come back.
@@ -290,7 +309,7 @@ export default function DateStudio() {
               type="button"
               onClick={generate}
               disabled={busy}
-              className="w-full rounded-pill bg-accent px-6 py-3.5 text-sm font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-pill bg-navy px-6 py-3.5 text-sm font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {busy ? "Thinking…" : "Generate plans"}
             </button>
@@ -298,7 +317,7 @@ export default function DateStudio() {
         ) : null}
 
         {error && prefs ? (
-          <p className="rounded-card bg-rose-500/10 px-4 py-3 text-xs text-rose-200 ring-1 ring-rose-400/20 ring-inset">
+          <p className="rounded-card bg-rose-100 px-4 py-3 text-xs font-medium text-rose-800 ring-1 ring-rose-300 ring-inset">
             {error}
           </p>
         ) : null}
@@ -334,7 +353,7 @@ export default function DateStudio() {
                     type="button"
                     disabled={binding === path.pathId}
                     onClick={() => makeItReal(path.pathId)}
-                    className="self-start rounded-pill bg-accent/20 px-4 py-2 text-xs text-accent-soft ring-1 ring-accent/25 ring-inset transition-colors hover:bg-accent/30 disabled:opacity-50"
+                    className="self-start rounded-pill bg-navy px-4 py-2.5 text-xs font-semibold text-cream transition-colors hover:bg-ink disabled:opacity-50"
                   >
                     {binding === path.pathId
                       ? "Finding places…"

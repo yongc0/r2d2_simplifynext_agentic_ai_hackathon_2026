@@ -148,7 +148,10 @@ export function extractFromTranscript(transcript: string): Extraction {
 
   const unresolved: string[] = [];
   if (intents.length === 0) unresolved.push("intent");
-  if (availability.length === 0) unresolved.push("availability");
+  if (interests.length === 0) unresolved.push("interests");
+  if (traits.length === 0) unresolved.push("characteristics");
+  if (values.length === 0) unresolved.push("values");
+  if (languages.length === 0) unresolved.push("languages");
 
   return {
     intents,
@@ -156,7 +159,7 @@ export function extractFromTranscript(transcript: string): Extraction {
     interests: [...interests],
     values: [...values],
     availability,
-    languages: languages.length > 0 ? [...languages] : ["english"],
+    languages: [...languages],
     unresolved,
   };
 }
@@ -176,8 +179,17 @@ export function followUpFor(extraction: Extraction): string | null {
       "There is no wrong answer, and you can change it later."
     );
   }
-  if (extraction.unresolved.includes("availability")) {
-    return "Which part of the day usually works best for you?";
+  if (extraction.unresolved.includes("interests")) {
+    return "What interests or hobbies do you enjoy?";
+  }
+  if (extraction.unresolved.includes("characteristics")) {
+    return "Which characteristics best describe you?";
+  }
+  if (extraction.unresolved.includes("values")) {
+    return "What matters most to you in a relationship or friendship?";
+  }
+  if (extraction.unresolved.includes("languages")) {
+    return "Which languages are you comfortable speaking?";
   }
   return null;
 }

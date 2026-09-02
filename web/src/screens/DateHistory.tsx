@@ -34,8 +34,8 @@ const STATUS_LABEL: Record<ItineraryStatus, string> = {
 
 const STATUS_STYLE: Record<ItineraryStatus, string> = {
   draft: "bg-white/[0.08] text-muted",
-  proposed: "bg-sky-400/15 text-sky-200",
-  confirmed: "bg-emerald-400/15 text-emerald-200",
+  proposed: "bg-sky-100 text-sky-900",
+  confirmed: "bg-emerald-100 text-emerald-900",
   completed: "bg-accent/20 text-accent-soft",
   cancelled: "bg-white/[0.06] text-muted/70",
 };
