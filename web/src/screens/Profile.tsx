@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { getAdapter } from "../api/adapter";
 import { NAV_HEIGHT_CLASS } from "../components/AppNav";
 import { SettingsPanel } from "../components/SettingsPanel";
-import { KNOWN_INTERESTS, KNOWN_VALUES } from "../api/extract";
+import { KNOWN_INTERESTS, KNOWN_TRAITS, KNOWN_VALUES } from "../api/extract";
 import type { ChipKind, Intent, ProfileChip } from "../api/types";
 import { intentLabel, intentValue } from "../api/wire";
 import { useSpark } from "../store/useSpark";
@@ -95,6 +95,10 @@ export default function Profile() {
         values: chips
           .filter((c) => c.kind === "value")
           .map((c) => c.label.toLowerCase()),
+        personality: chips
+          .filter((c) => c.kind === "trait")
+          .map((c) => c.label.toLowerCase())
+          .join(", "),
       })
       .then(() => setSaveError(null))
       .catch((cause: unknown) =>
@@ -165,7 +169,19 @@ export default function Profile() {
             </div>
           </Section>
 
-          {/* --- interests and values ------------------------------------- */}
+          {/* --- personality, interests and values ------------------------ */}
+          <EditableChips
+            title="How you describe yourself"
+            options={[...KNOWN_TRAITS]}
+            chips={byKind("trait")}
+            editing={editing === "trait"}
+            onToggleEdit={() =>
+              setEditing(editing === "trait" ? null : "trait")
+            }
+            onToggle={(label) => toggle("trait", label)}
+            has={(label) => has("trait", label)}
+          />
+
           <EditableChips
             title="Interests"
             options={[...KNOWN_INTERESTS]}

@@ -193,6 +193,7 @@ class OnboardingAgent:
         lowered = transcript.lower()
         interests = [term for term in _KNOWN_INTERESTS if re.search(rf"\b{term}\b", lowered)]
         values = [term for term in _KNOWN_VALUES if re.search(rf"\b{term}\b", lowered)]
+        traits = [term for term in _KNOWN_TRAITS if re.search(rf"\b{term}\b", lowered)]
         buckets = [b for pattern, b in _BUCKET_PHRASES if re.search(pattern, lowered)]
         languages = [
             lang for lang in ("english", "mandarin", "malay", "tamil", "cantonese", "hokkien")
@@ -202,6 +203,7 @@ class OnboardingAgent:
             intents=list(_named_intents(transcript)),
             interests=interests[:20],
             values=values[:10],
+            personality=", ".join(traits[:5]),
             languages=languages or ["english"],
             availability_window=sorted(set(buckets), key=lambda b: b.value),
             matchable_fields=["intents", "languages", "availability_window", "interests"],
@@ -283,4 +285,9 @@ _KNOWN_INTERESTS = (
 _KNOWN_VALUES = (
     "honesty", "ambition", "family", "independence", "humour", "stability",
     "adventure", "kindness", "curiosity", "faith",
+)
+_KNOWN_TRAITS = (
+    "outgoing", "thoughtful", "adventurous", "calm", "curious", "creative",
+    "playful", "optimistic", "kind", "independent", "ambitious", "easygoing",
+    "happy",
 )

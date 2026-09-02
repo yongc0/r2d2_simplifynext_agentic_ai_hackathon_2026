@@ -35,6 +35,7 @@ const HIDDEN_ON = [
   "/encounter",        // includes /waiting and /closed
   "/call",             // includes /call/consent
   "/reveal",           // one action: add to lock-ins
+  "/admin",            // demo operator tool, never product navigation
 ];
 
 const TABS = [

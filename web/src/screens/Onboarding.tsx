@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { getAdapter } from "../api/adapter";
+import { KNOWN_TRAITS } from "../api/extract";
 import type { ChipKind, Intent, ProfileChip } from "../api/types";
 import { SingpassVerification } from "../components/SingpassVerification";
 import { intentLabel } from "../api/wire";
@@ -71,6 +72,8 @@ export default function Onboarding() {
     { from: "agent", text: OPENING },
   ]);
   const [draft, setDraft] = useState("");
+  const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
+  const [openingAnswered, setOpeningAnswered] = useState(false);
   const [thinking, setThinking] = useState(false);
   /** True once the agent has nothing left to ask. */
   const [complete, setComplete] = useState(false);
@@ -98,6 +101,8 @@ export default function Onboarding() {
     if (!said || thinking || complete) return;
 
     setDraft("");
+    if (transcript.current.length === 0) setOpeningAnswered(true);
+    setSelectedTraits([]);
     setAskingIntent(false);
     setAskingAvailability(false);
     setMessages((m) => [...m, { from: "user", text: said }]);
@@ -115,13 +120,38 @@ export default function Onboarding() {
 
     if (turn.followUp) {
       setMessages((m) => [...m, { from: "agent", text: turn.followUp! }]);
-      setAskingIntent(turn.unresolved.includes("intent"));
-      setAskingAvailability(turn.unresolved.includes("availability"));
+      // Ask one thing at a time. When both are unresolved, intent comes first;
+      // availability appears only after that answer has been processed.
+      const needsIntent = turn.unresolved.includes("intent");
+      setAskingIntent(needsIntent);
+      setAskingAvailability(
+        !needsIntent && turn.unresolved.includes("availability"),
+      );
     } else {
       setMessages((m) => [...m, { from: "agent", text: COMPLETE }]);
       setComplete(true);
     }
   };
+
+  const sendDraft = () => {
+    const traitSentence = selectedTraits.length
+      ? `I would describe myself as ${selectedTraits.join(", ")}.`
+      : "";
+    send(
+      !openingAnswered
+        ? [draft.trim(), traitSentence].filter(Boolean).join(" ")
+        : draft,
+    );
+  };
+
+  const stage = !openingAnswered ? 1 : askingAvailability || complete ? 3 : 2;
+  const composerPlaceholder = !openingAnswered
+    ? "Or describe yourself in your own words"
+    : askingIntent
+      ? "Or type what you are looking for"
+      : askingAvailability
+        ? "Or describe when you are usually free"
+        : "Add anything else you want Spark to know";
 
   if (!verificationComplete) {
     return (
@@ -139,9 +169,17 @@ export default function Onboarding() {
         ref={scroller}
         className="no-scrollbar flex-1 space-y-3 overflow-y-auto px-6 py-5"
       >
+        <OnboardingProgress stage={stage} thinking={thinking} />
         {messages.map((message, i) => (
           <Bubble key={i} message={message} reduced={!!reduced} />
         ))}
+        {!openingAnswered && !thinking ? (
+          <TraitChoice
+            selected={selectedTraits}
+            onChange={setSelectedTraits}
+            onContinue={sendDraft}
+          />
+        ) : null}
         {thinking ? <Thinking /> : null}
       </div>
 
@@ -155,10 +193,6 @@ export default function Onboarding() {
             Continue
           </button>
         ) : (
-          // The choices sit ABOVE the composer rather than replacing it. They
-          // are a convenience for naming an intent, not a gate: someone who
-          // would rather say it in their own words still can, and someone who
-          // wants to add something else first is not stuck.
           <div className="flex flex-col gap-3">
             {askingIntent ? <IntentChoice onChoose={send} /> : null}
             {askingAvailability ? (
@@ -167,8 +201,9 @@ export default function Onboarding() {
             <Composer
               value={draft}
               onChange={setDraft}
-              onSend={() => send(draft)}
+              onSend={sendDraft}
               disabled={thinking}
+              placeholder={composerPlaceholder}
             />
           </div>
         )}
@@ -184,6 +219,7 @@ export default function Onboarding() {
 /** Colour per kind, so the panel reads as structure rather than a word cloud. */
 const CHIP_STYLE: Record<ChipKind, string> = {
   intent: "bg-accent/25 text-accent-soft ring-accent/30",
+  trait: "bg-violet-400/10 text-violet-200 ring-violet-400/20",
   interest: "bg-white/[0.06] text-text/90 ring-white/10",
   value: "bg-sky-400/10 text-sky-200 ring-sky-400/20",
   availability: "bg-amber-400/10 text-amber-200 ring-amber-400/20",
@@ -284,6 +320,31 @@ function Thinking() {
   );
 }
 
+function OnboardingProgress({
+  stage,
+  thinking,
+}: {
+  stage: number;
+  thinking: boolean;
+}) {
+  const labels = ["About you", "What you want", "Availability"];
+  return (
+    <div className="pb-1" aria-label={`Onboarding step ${stage} of 3`}>
+      <div className="mb-2 flex gap-1.5" aria-hidden="true">
+        {labels.map((label, index) => (
+          <span
+            key={label}
+            className={`h-1 flex-1 rounded-full ${index < stage ? "bg-accent" : "bg-white/[0.08]"}`}
+          />
+        ))}
+      </div>
+      <p className="text-[11px] font-medium tracking-[0.12em] text-muted uppercase">
+        {thinking ? "Understanding your reply" : `Step ${stage} of 3 · ${labels[stage - 1]}`}
+      </p>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Input
 // ---------------------------------------------------------------------------
@@ -293,11 +354,13 @@ function Composer({
   onChange,
   onSend,
   disabled,
+  placeholder,
 }: {
   value: string;
   onChange: (next: string) => void;
   onSend: () => void;
   disabled: boolean;
+  placeholder: string;
 }) {
   return (
     <form
@@ -312,7 +375,7 @@ function Composer({
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         aria-label="Your reply"
-        placeholder="Say it however you like"
+        placeholder={placeholder}
         className="min-w-0 flex-1 rounded-pill bg-surface px-5 py-3.5 text-[15px] text-text placeholder:text-muted/50 focus:outline-none disabled:opacity-50"
       />
       <button
@@ -323,6 +386,76 @@ function Composer({
         Send
       </button>
     </form>
+  );
+}
+
+const MAX_TRAITS = 5;
+
+function TraitChoice({
+  selected,
+  onChange,
+  onContinue,
+}: {
+  selected: string[];
+  onChange: (traits: string[]) => void;
+  onContinue: () => void;
+}) {
+  const toggle = (trait: string) => {
+    if (selected.includes(trait)) {
+      onChange(selected.filter((item) => item !== trait));
+    } else if (selected.length < MAX_TRAITS) {
+      onChange([...selected, trait]);
+    }
+  };
+
+  return (
+    <div
+      className="rounded-card bg-surface/70 p-4 ring-1 ring-white/[0.06] ring-inset"
+      aria-label="Choose traits that sound like you"
+    >
+      <div className="mb-3 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-text">Choose a few traits</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted">
+            Optional — select up to five, or write your own reply below.
+          </p>
+        </div>
+        <span className="shrink-0 text-xs tabular-nums text-muted">
+          {selected.length}/{MAX_TRAITS}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {KNOWN_TRAITS.map((trait) => {
+          const active = selected.includes(trait);
+          const unavailable = !active && selected.length >= MAX_TRAITS;
+          return (
+            <button
+              key={trait}
+              type="button"
+              aria-pressed={active}
+              disabled={unavailable}
+              onClick={() => toggle(trait)}
+              className={`rounded-pill px-3 py-2 text-sm capitalize ring-1 ring-inset transition-colors disabled:opacity-35 ${
+                active
+                  ? "bg-accent/25 text-accent-soft ring-accent/40"
+                  : "bg-white/[0.04] text-text/85 ring-white/10 hover:bg-white/[0.08]"
+              }`}
+            >
+              {trait}
+            </button>
+          );
+        })}
+      </div>
+      {selected.length > 0 ? (
+        <button
+          type="button"
+          onClick={onContinue}
+          className="mt-4 w-full rounded-pill bg-accent px-5 py-3 text-sm font-medium text-text transition-opacity hover:opacity-90"
+        >
+          Continue with {selected.length} {selected.length === 1 ? "trait" : "traits"}
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -345,7 +478,7 @@ const INTENT_SENTENCES: [Intent, string][] = [
 
 function IntentChoice({ onChoose }: { onChoose: (text: string) => void }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2" aria-label="Choose what you are looking for">
       {INTENT_SENTENCES.map(([intent, sentence]) => (
         <button
           key={intent}

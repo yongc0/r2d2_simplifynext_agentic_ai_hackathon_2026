@@ -80,6 +80,13 @@ export function DemoControls() {
 
           <Button
             busy={busy}
+            onClick={() => navigate("/admin/profiles?demo=1")}
+          >
+            Profile lab
+          </Button>
+
+          <Button
+            busy={busy}
             onClick={() =>
               run("skip to window", async () => {
                 setWindowOpen(true);

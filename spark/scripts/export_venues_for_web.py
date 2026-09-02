@@ -117,7 +117,11 @@ def main() -> int:
 
     chosen: list[dict] = []
     for category in CATEGORIES:
-        matching = [v for v in venues if v.get("category") == category]
+        matching = [
+            v
+            for v in venues
+            if v.get("category") == category and v.get("interests")
+        ]
         # Sorted by id, so the bundle is byte-identical across runs and a
         # regenerated file does not show up as a diff full of reordering.
         matching.sort(key=lambda v: v["venue_id"])
@@ -125,11 +129,26 @@ def main() -> int:
         # demo in which every stop says "hours unknown" reads as broken even
         # though it is being honest.
         matching.sort(key=lambda v: v.get("opening_hours") is None)
-        chosen.extend(matching[:PER_CATEGORY])
-
-    # A venue that can claim no interest can never be grounded in one, so it
-    # would never be suggested. Bundling it would only pad the file.
-    chosen = [v for v in chosen if v["interests"]]
+        # Cover the category's interest vocabulary before filling spare slots.
+        # Taking the first 25 used to fill the activity slice with gyms and
+        # galleries before a park appeared, so a genuinely shared interest such
+        # as birdwatching had no eligible venue in the offline demo.
+        selected: list[dict] = []
+        covered: set[str] = set()
+        for venue in matching:
+            claims = set(venue["interests"])
+            if claims - covered:
+                selected.append(venue)
+                covered.update(claims)
+            if len(selected) >= PER_CATEGORY:
+                break
+        selected_ids = {venue["venue_id"] for venue in selected}
+        selected.extend(
+            venue
+            for venue in matching
+            if venue["venue_id"] not in selected_ids
+        )
+        chosen.extend(selected[:PER_CATEGORY])
 
     rows = [
         {

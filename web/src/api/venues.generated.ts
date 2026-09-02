@@ -55,6 +55,53 @@ export const GENERATED_VENUES: MockVenue[] = [
     ]
   },
   {
+    "venueId": "osm-n10808393883",
+    "name": "Ellie Art Studio",
+    "category": "activity",
+    "budget": "free",
+    "energy": "low",
+    "lat": 1.333951,
+    "lon": 103.888016,
+    "address": "601 MacPherson Road, 368242",
+    "openingHours": "Mo-Su 11:30-21:00",
+    "interests": [
+      "photography",
+      "film"
+    ]
+  },
+  {
+    "venueId": "osm-n10980076782",
+    "name": "bommoi",
+    "category": "activity",
+    "budget": "free",
+    "energy": "low",
+    "lat": 1.279456,
+    "lon": 103.842435,
+    "address": "61A Neil rd, 088895",
+    "openingHours": "We-Su 11:00-19:00",
+    "interests": [
+      "reading",
+      "languages"
+    ]
+  },
+  {
+    "venueId": "osm-n8482680637",
+    "name": "Kallang park connector",
+    "category": "activity",
+    "budget": "free",
+    "energy": "medium",
+    "lat": 1.320888,
+    "lon": 103.867166,
+    "address": null,
+    "openingHours": "24/7",
+    "interests": [
+      "running",
+      "cycling",
+      "birdwatching",
+      "gardening"
+    ]
+  },
+  {
     "venueId": "osm-n10287172753",
     "name": "Anytime Fitness",
     "category": "activity",
@@ -84,36 +131,6 @@ export const GENERATED_VENUES: MockVenue[] = [
       "running",
       "swimming",
       "yoga"
-    ]
-  },
-  {
-    "venueId": "osm-n10808393883",
-    "name": "Ellie Art Studio",
-    "category": "activity",
-    "budget": "free",
-    "energy": "low",
-    "lat": 1.333951,
-    "lon": 103.888016,
-    "address": "601 MacPherson Road, 368242",
-    "openingHours": "Mo-Su 11:30-21:00",
-    "interests": [
-      "photography",
-      "film"
-    ]
-  },
-  {
-    "venueId": "osm-n10980076782",
-    "name": "bommoi",
-    "category": "activity",
-    "budget": "free",
-    "energy": "low",
-    "lat": 1.279456,
-    "lon": 103.842435,
-    "address": "61A Neil rd, 088895",
-    "openingHours": "We-Su 11:00-19:00",
-    "interests": [
-      "reading",
-      "languages"
     ]
   },
   {
@@ -405,21 +422,6 @@ export const GENERATED_VENUES: MockVenue[] = [
     "lon": 103.826681,
     "address": null,
     "openingHours": "Mo-Fr 11:00-21:00; PH,Sa-Su 10:30-21:30",
-    "interests": [
-      "reading",
-      "languages"
-    ]
-  },
-  {
-    "venueId": "osm-n5942836046",
-    "name": "Popular",
-    "category": "activity",
-    "budget": "free",
-    "energy": "low",
-    "lat": 1.350516,
-    "lon": 103.872229,
-    "address": "23 Serangoon Central, 556083",
-    "openingHours": "Mo-Fr 11:00-21:30; Sa,Su,PH 10:30-22:00",
     "interests": [
       "reading",
       "languages"
@@ -1146,4 +1148,4 @@ export const GENERATED_VENUES: MockVenue[] = [
 ];
 
 /** Written by the export script so the interface can say how fresh this is. */
-export const GENERATED_AT: string | null = "2026-09-01";
+export const GENERATED_AT: string | null = "2026-09-02";

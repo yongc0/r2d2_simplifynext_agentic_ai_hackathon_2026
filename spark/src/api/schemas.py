@@ -221,6 +221,7 @@ class ExtractionOut(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     intents: list[Intent]
+    traits: list[str]
     interests: list[str]
     values: list[str]
     #: Coarse time buckets only. Never a clock time, never a place.

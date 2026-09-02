@@ -65,6 +65,13 @@ export const KNOWN_VALUES = [
   "adventure", "kindness", "curiosity", "faith",
 ] as const;
 
+/** Optional shortcuts for the opening question. Free text remains available. */
+export const KNOWN_TRAITS = [
+  "outgoing", "thoughtful", "adventurous", "calm", "curious", "creative",
+  "playful", "optimistic", "kind", "independent", "ambitious", "easygoing",
+  "happy",
+] as const;
+
 const BUCKET_PHRASES: [RegExp, string][] = [
   [/\bearly morning|before work|dawn\b/i, "early_morning"],
   [/\bmornings?\b/i, "morning"],
@@ -103,6 +110,7 @@ export function namedIntents(transcript: string): Intent[] {
 
 export interface Extraction {
   intents: Intent[];
+  traits: string[];
   interests: string[];
   values: string[];
   availability: string[];
@@ -129,6 +137,7 @@ export function extractFromTranscript(transcript: string): Extraction {
 
   const interests = KNOWN_INTERESTS.filter(has);
   const values = KNOWN_VALUES.filter(has);
+  const traits = KNOWN_TRAITS.filter(has);
   const availability = [
     ...new Set(
       BUCKET_PHRASES.filter(([p]) => p.test(lowered)).map(([, b]) => b),
@@ -143,6 +152,7 @@ export function extractFromTranscript(transcript: string): Extraction {
 
   return {
     intents,
+    traits: [...traits],
     interests: [...interests],
     values: [...values],
     availability,
@@ -197,7 +207,7 @@ function titleCase(term: string): string {
  * extraction over the wire and renders it through this same function, so the
  * demo and the backend cannot end up with two vocabularies for the same fact.
  *
- * Order is fixed — intent, interests, values, availability, languages — so the
+ * Order is fixed — intent, traits, interests, values, availability, languages — so the
  * panel does not reshuffle between turns. Reshuffling chips is layout shift,
  * and this screen is on camera.
  */
@@ -205,6 +215,9 @@ export function chipsFor(extraction: Extraction): ProfileChip[] {
   const chips: ProfileChip[] = [];
   for (const intent of extraction.intents) {
     chips.push({ kind: "intent", label: intentLabel(intent) });
+  }
+  for (const trait of extraction.traits) {
+    chips.push({ kind: "trait", label: titleCase(trait) });
   }
   for (const interest of extraction.interests) {
     chips.push({ kind: "interest", label: titleCase(interest) });

@@ -432,7 +432,7 @@ Update:
 - `docs/FRONTEND.md`
 - `docs/PILOT.md`
 - `README.md`
-- `CODE_REVIEW_HANDOFF.md`
+- `../CODE_REVIEW_HANDOFF.md`
 
 State precisely:
 

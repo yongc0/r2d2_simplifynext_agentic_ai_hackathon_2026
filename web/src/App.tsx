@@ -21,6 +21,7 @@ import Home from "./screens/Home";
 import LockIns from "./screens/LockIns";
 import Onboarding from "./screens/Onboarding";
 import Reveal from "./screens/Reveal";
+import AdminProfiles from "./screens/AdminProfiles";
 
 /**
  * Routes map one-to-one onto the encounter's life, so the client and the
@@ -63,6 +64,10 @@ export default function App() {
         <Route path="/reveal" element={<Reveal />} />
         <Route path="/lockins" element={<LockIns />} />
         <Route path="/profile" element={<Profile />} />
+        <Route
+          path="/admin/profiles"
+          element={demo ? <AdminProfiles /> : <Navigate to="/home" replace />}
+        />
         {/* Post-reveal only. The screen guards itself on `store.revealed`
             and the backend refuses with 409 — see Dates.tsx. */}
         {/* Date Studio (§13.6). Post-reveal only — the screens guard on the

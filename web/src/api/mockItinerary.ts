@@ -29,6 +29,14 @@ import { GENERATED_VENUES, type MockVenue } from "./venues.generated";
 
 export type { MockVenue };
 
+/** Evidence and shape selected by the abstract plan the person clicked. */
+export interface MockItineraryContext {
+  groundedIn: string[];
+  preferredEnergies: string[];
+  preferredDuration?: string;
+  preferredFormat?: string;
+}
+
 /**
  * The venues the offline demo can plan with. Empty until the export script has
  * run, and empty is a legitimate state that every caller handles.
@@ -142,11 +150,11 @@ export function mapsUrl(lat: number, lon: number): string {
 }
 
 /**
- * Eligible venues of a kind, NEAREST TO THE LAST STOP FIRST.
+ * Eligible venues ranked by shared-interest fit, then by plan preference.
  *
- * The ordering is the difference between an itinerary and a list. Ranked on fit
- * alone, the planner will happily put two individually excellent venues ten
- * kilometres apart in the same evening.
+ * The first stop must overlap the interest that grounded the selected plan.
+ * Later stops use proximity as a tie-breaker so the result is an itinerary,
+ * not two individually sensible venues ten kilometres apart.
  *
  * This is venue-to-venue distance between stops already chosen for a plan, not
  * proximity to a person — nothing here knows where either participant is or has
@@ -154,19 +162,43 @@ export function mapsUrl(lat: number, lon: number): string {
  * at this scale, and only the chosen venue's leg gets measured properly.
  */
 function candidates(
-  category: MockVenue["category"],
+  categories: MockVenue["category"][],
   budget: string | null | undefined,
   used: Set<string>,
   previous: ItineraryStop | null = null,
+  interests: string[] = [],
+  preferredEnergies: string[] = [],
+  preferredFormat?: string,
 ): MockVenue[] {
   const eligible = MOCK_VENUES.filter(
     (venue) =>
-      venue.category === category &&
+      categories.includes(venue.category) &&
       !used.has(venue.venueId) &&
-      (!budget || budget === "flexible" || venue.budget === budget),
+      (!budget || budget === "flexible" || venue.budget === budget) &&
+      (interests.length === 0 ||
+        venue.interests.some((interest) => interests.includes(interest))),
   );
-  if (!previous) return eligible;
+
+  const fit = (venue: MockVenue) => {
+    const interestHits = venue.interests.filter((interest) =>
+      interests.includes(interest),
+    ).length;
+    const energyHit = preferredEnergies.includes(venue.energy) ? 1 : 0;
+    const categoryHit =
+      preferredFormat === "food"
+        ? venue.category === "food" || venue.category === "drink"
+        : preferredFormat
+          ? venue.category === "activity"
+          : false;
+    // Shared interest is the hard filter above and the strongest ordering
+    // signal here. Energy and the chosen plan shape break genuine-fit ties.
+    return interestHits * 100 + energyHit * 10 + (categoryHit ? 3 : 0);
+  };
+
   return eligible.sort((a, b) => {
+    const byFit = fit(b) - fit(a);
+    if (byFit) return byFit;
+    if (!previous) return a.venueId.localeCompare(b.venueId);
     const gap = (v: MockVenue) =>
       (previous.lat - v.lat) ** 2 + (previous.lon - v.lon) ** 2;
     return gap(a) - gap(b) || a.venueId.localeCompare(b.venueId);
@@ -262,18 +294,27 @@ function noteFor(stops: ItineraryStop[], skippedClosed: number): string {
 }
 
 /**
- * One evening: an activity, then somewhere to eat.
+ * One evening grounded in the selected path, then somewhere nearby if time
+ * permits.
  *
- * Deterministic — the venue list is sorted and the first eligible candidate
- * wins — so the same request gives the same plan on every take.
+ * Deterministic — fit, preferences, proximity and id form a stable ordering,
+ * so the same request gives the same plan on every take.
  */
 export function buildMockItinerary(
   lockInId: string,
   preferences: Partial<DatePreferences> & { pathId?: string },
   existing: Map<string, Itinerary>,
+  context: MockItineraryContext,
 ): ItineraryResult {
   const bucket = preferences.timeBucket ?? "evening";
-  const groundedIn = ["coffee", "photography", "reading"];
+  const groundedIn = [...new Set(context.groundedIn.map((item) => item.toLowerCase()))];
+  if (groundedIn.length === 0) {
+    return {
+      itinerary: null,
+      reason: "Nothing you have both mentioned to build this plan on yet.",
+      dataUnavailable: false,
+    };
+  }
   const used = new Set<string>(
     // Never re-offer a venue this connection already has a plan around.
     [...existing.values()]
@@ -285,16 +326,26 @@ export function buildMockItinerary(
   const stops: ItineraryStop[] = [];
   let skippedClosed = 0;
 
-  for (const [index, category] of (["activity", "food"] as const).entries()) {
-    const duration = index === 0 ? 75 : 60;
+  const durationBand = context.preferredDuration ?? "two_hours";
+  const durations =
+    durationBand === "one_hour"
+      ? [60]
+      : durationBand === "whole_evening"
+        ? [90, 75]
+        : [70, 50];
+
+  for (const [index, duration] of durations.entries()) {
     const previous = stops[stops.length - 1] ?? null;
     let placed = false;
 
     for (const venue of candidates(
-      category,
+      index === 0 ? ["activity", "drink", "food"] : ["food", "drink"],
       preferences.budget,
       used,
       previous,
+      index === 0 ? groundedIn : [],
+      context.preferredEnergies,
+      context.preferredFormat,
     )) {
       const travel = previous ? travelLeg(previous, venue) : null;
       const arrive = cursor + (travel?.minutes ?? 0);
@@ -368,10 +419,11 @@ export function replaceMockStop(
   const from = previous ? toMinutes(previous.endTime) : toMinutes(target.startTime);
 
   for (const venue of candidates(
-    target.activityType,
+    [target.activityType],
     undefined,
     used,
     previous,
+    target.order === 1 ? itinerary.groundedIn : [],
   )) {
     const travel = previous ? travelLeg(previous, venue) : null;
     const arrive = from + (travel?.minutes ?? 0);

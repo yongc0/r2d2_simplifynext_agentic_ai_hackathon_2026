@@ -142,6 +142,7 @@ export type ConsentOutcome = "mutual" | "declined" | "no_response";
  */
 export type ChipKind =
   | "intent"
+  | "trait"
   | "interest"
   | "value"
   | "availability"

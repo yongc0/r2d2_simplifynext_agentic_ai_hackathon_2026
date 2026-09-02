@@ -184,11 +184,13 @@ describe("/profile", () => {
   it("shows what onboarding captured, and lets it be changed", async () => {
     useSpark.getState().setChips([
       { kind: "intent", label: "Friends" },
+      { kind: "trait", label: "Outgoing" },
       { kind: "interest", label: "Coffee" },
     ]);
     renderAt("/profile");
 
     expect(await screen.findByText("Coffee")).toBeInTheDocument();
+    expect(screen.getByText("Outgoing")).toBeInTheDocument();
     // Intent is a choice among three, in a fixed order, nothing preselected —
     // the same rule as onboarding, because changing it must be deliberate.
     expect(

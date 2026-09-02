@@ -26,6 +26,7 @@ import {
   MOCK_VENUES,
   buildMockItinerary,
   replaceMockStop,
+  type MockItineraryContext,
 } from "./mockItinerary";
 
 import type { Adapter, CallTick, ConversationPrompt } from "./adapter";
@@ -47,6 +48,7 @@ import type {
   DatePreferences,
   EncounterCard,
   PlanLockIn,
+  PlanFormat,
   PlanShape,
   RejectionReason,
   LockIn,
@@ -93,7 +95,16 @@ const PEER_IDENTITY = {
   avatarSeed: "azure-heron",
 } as const;
 
-const SHARED_INTERESTS = ["coffee", "birdwatching"] as const;
+/** The synthetic peer's stated interests. The viewer side is read from the
+ * editable profile, so Profile Lab changes genuinely reach planning. */
+const PEER_INTERESTS = [
+  "coffee",
+  "birdwatching",
+  "cycling",
+  "gardening",
+  "swimming",
+] as const;
+const PEER_AVAILABILITY = ["early_morning", "afternoon", "evening"] as const;
 
 /**
  * What each person said during the call lives in `callFixture.ts`, filed
@@ -270,7 +281,17 @@ export class MockAdapter implements Adapter {
    *  deterministic — the same rule the backend follows. */
   private memory: DateMemory[] = [];
   /** Plans actually shown, so feedback can be validated and attributed. */
-  private plans = new Map<string, { lockInId: string; leadVenueId: string }>();
+  private plans = new Map<
+    string,
+    {
+      lockInId: string;
+      leadVenueId: string;
+      groundedIn: string[];
+      energy: string;
+      duration: string;
+      format: string;
+    }
+  >();
   /** Plans with real venues in them, and the private reflections on them.
    *  Cleared by `reset`, like everything else a take can dirty. */
   /**
@@ -290,12 +311,12 @@ export class MockAdapter implements Adapter {
 
   private profile: EditableProfile = {
     intents: ["partner_long_term"],
-    interests: ["coffee", "reading", "photography"],
+    interests: ["coffee", "reading", "photography", "birdwatching"],
     values: ["curiosity", "kindness"],
     personality: "",
     lifestyle: "",
     languages: ["English"],
-    availabilityWindow: ["evening"],
+    availabilityWindow: ["afternoon", "evening"],
     knownBuckets: ["midday", "afternoon", "evening", "night"],
   };
 
@@ -324,6 +345,20 @@ export class MockAdapter implements Adapter {
     return new Date(this.epoch + this.dayOffset * 86_400_000);
   }
 
+  /** What BOTH synthetic people actually list, in viewer-profile order. */
+  private sharedInterests(): string[] {
+    return this.profile.interests.filter((interest) =>
+      (PEER_INTERESTS as readonly string[]).includes(interest),
+    );
+  }
+
+  /** Time buckets that genuinely overlap for this synthetic pair. */
+  private sharedAvailability(): string[] {
+    return this.profile.availabilityWindow.filter((bucket) =>
+      (PEER_AVAILABILITY as readonly string[]).includes(bucket),
+    );
+  }
+
   async getEncounter(): Promise<EncounterCard> {
     return {
       encounterId: this.encounterId,
@@ -337,7 +372,7 @@ export class MockAdapter implements Adapter {
       state: this.settings.allowCalls ? "NOTIFIED" : "ABANDONED",
       intent: "partner_long_term",
       handle: PEER_HANDLE,
-      sharedInterests: [...SHARED_INTERESTS],
+      sharedInterests: this.sharedInterests(),
       // Words only. Derived from a coarse time bucket, never a place.
       overlapHint: overlapHintFor("afternoon"),
       windowClosesAt: new Date(this.epoch + 90 * 60_000).toISOString(),
@@ -396,7 +431,7 @@ export class MockAdapter implements Adapter {
     this.emitOutcome("mutual");
     return {
       outcome: "mutual",
-      person: { ...PEER_IDENTITY, sharedInterests: [...SHARED_INTERESTS] },
+      person: { ...PEER_IDENTITY, sharedInterests: this.sharedInterests() },
     };
   }
 
@@ -465,7 +500,7 @@ export class MockAdapter implements Adapter {
       energy: value("energy") as DatePreferences["energy"],
       formats: [],
       timeBucket: null,
-      sharedBuckets: ["morning", "afternoon", "evening"],
+      sharedBuckets: this.sharedAvailability(),
       prefilled: remembered.length > 0,
     };
   }
@@ -500,13 +535,49 @@ export class MockAdapter implements Adapter {
         .map((f) => f.leadVenueId),
     );
 
-    const scored = MOCK_CANDIDATES.map((candidate) => {
+    const sharedInterests = this.sharedInterests();
+    if (sharedInterests.length === 0) {
+      return {
+        paths: [],
+        note: "Nothing you have both mentioned to build on yet. Another call may give us something.",
+      };
+    }
+
+    const candidates = MOCK_CANDIDATES.filter((candidate) =>
+      sharedInterests.includes(candidate.grounded),
+    );
+    if (candidates.length === 0) {
+      return {
+        paths: [],
+        note: "Nothing in the current venue catalogue fits your shared interests yet.",
+      };
+    }
+    const sharedBuckets = this.sharedAvailability();
+    if (sharedBuckets.length === 0) {
+      return {
+        paths: [],
+        note: "You are not usually free at the same times.",
+      };
+    }
+    const proposedBucket =
+      preferences.timeBucket && sharedBuckets.includes(preferences.timeBucket)
+        ? preferences.timeBucket
+        : sharedBuckets[0];
+
+    const scored = candidates.map((candidate) => {
       let score = 0;
       // What they asked for, weighted highest — a stated constraint is not a
       // hint.
       if (preferences.budget && candidate.budget === preferences.budget) score += 1;
       if (preferences.energy && candidate.energy === preferences.energy) score += 1;
       if (preferences.duration && candidate.duration === preferences.duration) score += 1;
+      if (preferences.formats?.includes(candidate.format as PlanFormat)) score += 1;
+      if (
+        preferences.mood &&
+        MOOD_ENERGIES[preferences.mood]?.includes(candidate.energy)
+      ) {
+        score += 1;
+      }
       // What we remember, weighted by confidence.
       for (const item of this.memory) {
         if (item.scope === "lockin" && item.lockInId !== lockInId) continue;
@@ -547,7 +618,14 @@ export class MockAdapter implements Adapter {
       // out of the id later meant splitting on "-", and venue ids contain
       // hyphens — so feedback attached to the wrong connection and taught
       // nothing. Store it rather than parse it.
-      this.plans.set(pathId, { lockInId, leadVenueId: c.venueId });
+      this.plans.set(pathId, {
+        lockInId,
+        leadVenueId: c.venueId,
+        groundedIn: [c.grounded],
+        energy: c.energy,
+        duration: c.duration,
+        format: c.format,
+      });
       return {
         pathId,
         headline: c.headline,
@@ -558,8 +636,8 @@ export class MockAdapter implements Adapter {
         groundedIn: [c.grounded],
         // Assembled from what actually scored — never written first and
         // justified afterwards.
-        rationale: `You are both free in the evening. ${cap(evidence.join(", "))}.`,
-        proposedBucket: "evening",
+        rationale: `You are both free in the ${proposedBucket.replace(/_/g, " ")}. ${cap(evidence.join(", "))}.`,
+        proposedBucket,
       };
     });
 
@@ -631,7 +709,27 @@ export class MockAdapter implements Adapter {
         dataUnavailable: true,
       };
     }
-    const built = buildMockItinerary(lockInId, preferences, this.itineraries);
+    const selected = preferences.pathId
+      ? this.plans.get(preferences.pathId)
+      : undefined;
+    const context: MockItineraryContext = {
+      groundedIn: selected?.groundedIn ?? this.sharedInterests(),
+      preferredEnergies: preferences.energy
+        ? [preferences.energy]
+        : preferences.mood
+          ? [...(MOOD_ENERGIES[preferences.mood] ?? [])]
+          : selected?.energy
+            ? [selected.energy]
+            : [],
+      preferredDuration: preferences.duration ?? selected?.duration,
+      preferredFormat: preferences.formats?.[0] ?? selected?.format,
+    };
+    const built = buildMockItinerary(
+      lockInId,
+      preferences,
+      this.itineraries,
+      context,
+    );
     if (built.itinerary) this.itineraries.set(built.itinerary.itineraryId, built.itinerary);
     return built;
   }
@@ -814,7 +912,7 @@ export class MockAdapter implements Adapter {
     return [
       {
         lockInId: "lock-78f62d9d60cf",
-        person: { ...PEER_IDENTITY, sharedInterests: [...SHARED_INTERESTS] },
+        person: { ...PEER_IDENTITY, sharedInterests: this.sharedInterests() },
         openedAt: opened.toISOString(),
         lastContactAt: lastContact.toISOString(),
         // Goes quiet after ten days without contact — the same threshold the
@@ -1028,7 +1126,37 @@ const MOCK_CANDIDATES = [
       { venueId: "v-garden", activity: "the botanic gardens, slowly", category: "activity" as const, isCommercialPartner: false },
     ],
   },
+  {
+    venueId: "v-swim", headline: "A swim together, then something easy nearby",
+    grounded: "swimming", budget: "under_20", duration: "two_hours", energy: "high", format: "activity",
+    stops: [
+      { venueId: "v-swim", activity: "a swim together", category: "activity" as const, isCommercialPartner: false },
+      { venueId: "f-light", activity: "something easy nearby", category: "food" as const, isCommercialPartner: false },
+    ],
+  },
+  {
+    venueId: "v-cycle", headline: "A cycling loop with a relaxed stop afterwards",
+    grounded: "cycling", budget: "free", duration: "two_hours", energy: "high", format: "outdoors",
+    stops: [
+      { venueId: "v-cycle", activity: "a cycling loop", category: "activity" as const, isCommercialPartner: false },
+      { venueId: "d-rest", activity: "a relaxed stop afterwards", category: "drink" as const, isCommercialPartner: false },
+    ],
+  },
+  {
+    venueId: "v-gardening", headline: "A garden wander, with time to talk",
+    grounded: "gardening", budget: "free", duration: "one_hour", energy: "low", format: "outdoors",
+    stops: [
+      { venueId: "v-gardening", activity: "a garden wander", category: "activity" as const, isCommercialPartner: false },
+    ],
+  },
 ];
+
+const MOOD_ENERGIES: Record<string, string[]> = {
+  easy: ["low"],
+  meaningful: ["low", "medium"],
+  playful: ["medium", "high"],
+  adventurous: ["high"],
+};
 
 /** A rejection reason -> the belief it argues for. Reasons that name no
  *  dimension are recorded and teach nothing, on purpose. */

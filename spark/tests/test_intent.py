@@ -107,6 +107,13 @@ def test_the_profile_schema_has_no_appearance_field():
     assert forbidden.isdisjoint(Profile.model_fields)
 
 
+def test_personality_traits_are_captured_without_a_model():
+    extraction = OnboardingAgent().extract(
+        "u-test", "I am outgoing, happy, and adventurous."
+    )
+    assert extraction.personality == "outgoing, adventurous, happy"
+
+
 # ---------------------------------------------------------------------------
 # Eligibility
 # ---------------------------------------------------------------------------

@@ -159,6 +159,31 @@ describe("Singpass verification mockup", () => {
 // ---------------------------------------------------------------------------
 
 describe("live chip extraction", () => {
+  it("lets the person choose traits or use the same free-text reply", async () => {
+    renderOnboarding();
+
+    expect(
+      screen.getByLabelText("Choose traits that sound like you"),
+    ).toBeVisible();
+    expect(screen.getByPlaceholderText(/describe yourself in your own words/i)).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: /outgoing/i }));
+    fireEvent.click(screen.getByRole("button", { name: /happy/i }));
+    fireEvent.click(screen.getByRole("button", { name: /adventurous/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue with 3 traits" }),
+    );
+
+    await waitFor(() => expect(chipPanel()).toHaveTextContent("Outgoing"));
+    expect(chipPanel()).toHaveTextContent("Happy");
+    expect(chipPanel()).toHaveTextContent("Adventurous");
+    expect(
+      screen.getByText(
+        "I would describe myself as outgoing, happy, adventurous.",
+      ),
+    ).toBeVisible();
+  }, 15_000);
+
   it("fills in the panel as the person talks", async () => {
     renderOnboarding();
 
@@ -222,6 +247,13 @@ describe("intent is never inferred", () => {
     expect(screen.getByRole("button", { name: "Something short term" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Friends" })).toBeVisible();
 
+    // Availability is the next question, not a second form accidentally
+    // attached to this one. Only the three intent options belong here.
+    expect(
+      screen.queryByLabelText("Choose when you are usually free"),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Evening" })).toBeNull();
+
     // And nothing was captured in the meantime.
     expect(chipPanel()).not.toHaveTextContent(/long term|short term|friends/i);
   }, 15_000);
@@ -249,6 +281,25 @@ describe("intent is never inferred", () => {
 // ---------------------------------------------------------------------------
 
 describe("availability choices", () => {
+  it("waits until intent is answered before showing time choices", async () => {
+    renderOnboarding();
+    await say("I am outgoing and I enjoy coffee.");
+
+    await screen.findByLabelText("Choose what you are looking for");
+    expect(
+      screen.queryByLabelText("Choose when you are usually free"),
+    ).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Friends" }));
+
+    expect(
+      await screen.findByLabelText("Choose when you are usually free"),
+    ).toBeVisible();
+    expect(
+      screen.queryByLabelText("Choose what you are looking for"),
+    ).toBeNull();
+  }, 15_000);
+
   it("shows every valid time bucket and completes from one click", async () => {
     renderOnboarding();
     await say("I like coffee and I am looking for something long term.");

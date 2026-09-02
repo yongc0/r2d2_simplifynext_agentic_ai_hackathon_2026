@@ -1,6 +1,6 @@
 # Spark — code review status
 
-**Updated:** 28 August 2026
+**Updated:** 2 September 2026
 **Repository:** `agentic_ai_hackathon_2026`
 
 One current, internally consistent status report. Where something is only partly
@@ -11,10 +11,10 @@ done it says so in the same sentence.
 ## Verified today
 
 ```text
-backend    272 passed, 1 skipped, no warnings   (uv run pytest)
-frontend   200 passed,            no warnings   (npm test)
+backend    complete suite passed                (uv run pytest)
+frontend   231 passed,            no warnings   (npm test)
 build      clean                                (npm run build)
-whitespace clean                                (git diff --cached --check)
+whitespace clean                                (git diff --check)
 ```
 
 ---
@@ -36,6 +36,9 @@ loudly.
 
 **Eight agents**, four using a model and four deliberately deterministic —
 consent, eligibility and identity-reveal are ordinary Python, per invariant 6.
+
+**The deck and demo recording.** Both were confirmed complete by the project
+owner on 2 September 2026 and are stored outside this workspace.
 
 ### Defects found and fixed
 
@@ -111,8 +114,8 @@ graded number is Groq-derived or deterministic, and the report says so.
   at least one.
 - **Run the graded evaluation on Bedrock** — needs your AWS credentials, plus
   `SPARK_PRICE_*` or metric 4 reads "unpriced".
-- **The deck (≤10 slides) and the recording (≤5 minutes).**
-- **Commit, push, and any deploy.** Nothing has been committed.
+- **Commit and push the final housekeeping changes, then deploy or verify the
+  final deployment.**
 
 ---
 

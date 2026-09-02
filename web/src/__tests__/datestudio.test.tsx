@@ -235,6 +235,80 @@ describe("what gets remembered", () => {
 // ---------------------------------------------------------------------------
 
 describe("the three plans", () => {
+  it("binds every selected path to its actual shared interest, not the first venue", async () => {
+    await connect();
+    const plan = await adapter.generateDatePlans(LOCK_IN, {});
+    expect(plan.paths.length).toBeGreaterThan(1);
+
+    for (const path of plan.paths) {
+      const result = await adapter.createItinerary(LOCK_IN, {
+        pathId: path.pathId,
+        timeBucket: path.proposedBucket,
+      });
+      expect(result.itinerary, `${path.pathId}: ${result.reason}`).not.toBeNull();
+      expect(result.itinerary!.groundedIn).toEqual(path.groundedIn);
+      expect(result.itinerary!.stops[0].rationale.toLowerCase()).toContain(
+        path.groundedIn[0],
+      );
+      // Coffee and birdwatching cannot honestly select a gym. The old binder
+      // did exactly that because gyms happened to be first in the OSM export.
+      expect(result.itinerary!.stops[0].venueName).not.toMatch(/gym|fitness/i);
+    }
+  });
+
+  it("can select an active venue when swimming is genuinely shared", async () => {
+    await adapter.updateProfile({
+      interests: ["swimming"],
+      availabilityWindow: ["evening"],
+    });
+    await connect();
+
+    const plan = await adapter.generateDatePlans(LOCK_IN, { energy: "high" });
+    expect(plan.paths).toHaveLength(1);
+    expect(plan.paths[0].groundedIn).toEqual(["swimming"]);
+
+    const result = await adapter.createItinerary(LOCK_IN, {
+      pathId: plan.paths[0].pathId,
+      energy: "high",
+      timeBucket: "evening",
+    });
+    expect(result.itinerary, result.reason).not.toBeNull();
+    expect(result.itinerary!.stops[0].venueName).toMatch(/gym|fitness/i);
+    expect(result.itinerary!.stops[0].rationale).toMatch(/both mentioned swimming/i);
+  });
+
+  it("carries explicit budget, duration and energy into the real itinerary", async () => {
+    await connect();
+    const preferences = {
+      budget: "free" as const,
+      duration: "one_hour" as const,
+      energy: "low" as const,
+      mood: "easy" as const,
+    };
+    const plan = await adapter.generateDatePlans(LOCK_IN, preferences);
+    expect(plan.paths[0].durationBand).toBe("one_hour");
+
+    const result = await adapter.createItinerary(LOCK_IN, {
+      ...preferences,
+      pathId: plan.paths[0].pathId,
+      timeBucket: plan.paths[0].proposedBucket,
+    });
+    expect(result.itinerary, result.reason).not.toBeNull();
+    expect(result.itinerary!.stops).toHaveLength(1);
+    expect(result.itinerary!.stops[0].durationMinutes).toBe(60);
+    expect(result.itinerary!.stops[0].costBand).toBe("free");
+    expect(result.itinerary!.stops[0].venueName).not.toMatch(/gym|fitness/i);
+  });
+
+  it("offers no invented plan when the pair share no interests", async () => {
+    await adapter.updateProfile({ interests: ["climbing"] });
+    await connect();
+
+    const plan = await adapter.generateDatePlans(LOCK_IN, {});
+    expect(plan.paths).toEqual([]);
+    expect(plan.note).toMatch(/nothing you have both mentioned/i);
+  });
+
   it("renders three distinct shapes", async () => {
     await connect();
     renderStudio();

@@ -43,3 +43,6 @@ lab/section_6_agentcore/agent/dependencies.hash
 # and deliberately NOT staged, because a file named like a dotenv is the last
 # place a credential should be able to arrive unnoticed.
 lab/env
+
+# Local Netlify folder
+.netlify

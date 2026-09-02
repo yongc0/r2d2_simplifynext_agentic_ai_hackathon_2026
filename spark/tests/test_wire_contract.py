@@ -98,6 +98,11 @@ def test_known_values_match() -> None:
     assert _string_array(source, "KNOWN_VALUES") == list(onboarding._KNOWN_VALUES)
 
 
+def test_known_traits_match() -> None:
+    source = _source(EXTRACT_TS)
+    assert _string_array(source, "KNOWN_TRAITS") == list(onboarding._KNOWN_TRAITS)
+
+
 def test_intent_phrases_match() -> None:
     """The list that defines "the user named an intent", on both sides.
 

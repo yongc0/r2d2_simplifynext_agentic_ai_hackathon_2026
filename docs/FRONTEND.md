@@ -159,7 +159,16 @@ identity-number field and make no external request. The concept confirms only
 18+ eligibility and a one-way unique-account token; it does not set a real
 verification tier.
 
-Chat, not a form. The agent asks one thing at a time; the user replies in free text; extracted fields appear as **chips that fill in live** in a panel above the conversation.
+Chat, not a form. The agent asks one thing at a time; the user may choose up to
+five suggested personality traits, write a reply in their own words, or combine
+both. Extracted fields appear as **chips that fill in live** in a panel above
+the conversation.
+
+Show the intake as three clear stages: About you, What you want, and
+Availability. When more than one field is unresolved, render only the current
+question's choices. The intent stage offers exactly Something long term,
+Something short term, and Friends; availability choices appear only after the
+intent answer has been processed.
 
 When availability is unresolved, show all six valid backend time buckets as a
 two-column choice grid: Early morning, Morning, Midday, Afternoon, Evening and
@@ -333,6 +342,10 @@ Six weeks of continuity has to fit inside five minutes.
 
 A dev-only control strip (hidden behind `?demo=1`):
 
+- **Profile Lab** — create browser-local synthetic profile presets and apply
+  one to the current demo viewer. This works in the offline Netlify build. It
+  is explicitly not authentication or a real-user administration surface, and
+  it must never contain real personal data.
 - **Be someone else** — a persona picker, so a presenter can show two different
   people without restarting the server. `VITE_API=http` only: MockAdapter has
   one scripted pair, so the picker hides rather than offering a single option

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Literal
@@ -65,7 +66,7 @@ from src.api.schemas import (
 from src.agents.date import DateAgent
 from src.agents.itinerary import ItineraryAgent, NoItinerary
 from src.agents.guardian import GuardianAgent, IncidentLog
-from src.agents.onboarding import OnboardingAgent
+from src.agents.onboarding import OnboardingAgent, _KNOWN_TRAITS
 from src.api.session import (
     UNKNOWN_LOCKIN,
     EncounterClosed,
@@ -285,6 +286,11 @@ def onboarding_extract(body: ExtractIn) -> ExtractionOut:
     extraction = agent.extract(_INTAKE_SPAN_USER, body.transcript)
     return ExtractionOut(
         intents=[i.value for i in extraction.intents],
+        traits=[
+            trait
+            for trait in _KNOWN_TRAITS
+            if re.search(rf"\b{re.escape(trait)}\b", extraction.personality, re.I)
+        ],
         interests=list(extraction.interests),
         values=list(extraction.values),
         availability=[b.value for b in extraction.availability_window],
