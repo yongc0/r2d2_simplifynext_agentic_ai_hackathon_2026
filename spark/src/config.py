@@ -148,7 +148,7 @@ class EncounterRules:
     #: delay would itself leak that answer (INVARIANT 2).
     close_out_delay_minutes: int = 60
     rematch_cooldown_days: int = 30         # OPEN QUESTION 1 — a guess, see README
-    max_lockins: int = 5                    # OPEN QUESTION 2 — attention scarcity
+    max_lockins: int = 10                   # user-selected attention capacity
     continuity_note_retention_days: int = 90  # OPEN QUESTION 3
     encounters_per_user_per_day: int = 1
     #: A lock-in with no contact for this long is offered a graceful release.
@@ -248,7 +248,7 @@ def load_settings() -> Settings:
         ),
         rules=EncounterRules(
             rematch_cooldown_days=_env_int("SPARK_REMATCH_COOLDOWN_DAYS", 30),
-            max_lockins=_env_int("SPARK_MAX_LOCKINS", 5),
+            max_lockins=_env_int("SPARK_MAX_LOCKINS", 10),
         ),
         loop=LoopConfig(max_iterations=_env_int("SPARK_MAX_LOOP_ITERATIONS", 5)),
         sim=SimConfig(

@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getAdapter } from "../api/adapter";
-import { Avatar } from "../components/Avatar";
+import { PersonAvatar } from "../components/PersonAvatar";
 import { DateMemoryPanel } from "../components/DateMemoryPanel";
 import { NAV_HEIGHT_CLASS } from "../components/AppNav";
 import type { DateMemory, PlanLockIn } from "../api/types";
 import { useSpark } from "../store/useSpark";
-import { CalendarCheck, HeartHandshake } from "lucide-react";
+import { CalendarCheck, ChevronRight, HeartHandshake, Plus } from "lucide-react";
 
 /**
  * `/plans` — the Date Studio hub.
@@ -65,7 +65,7 @@ export default function Plans() {
       <header className="mb-5">
         <h1 className="text-2xl font-medium tracking-tight text-text">Plans</h1>
         <p className="mt-1.5 text-sm leading-relaxed text-muted">
-          Something to do with the people you have already met.
+          Every plan, organised by the person you are making it with.
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button type="button" onClick={() => navigate("/plans/ideas")} className="inline-flex items-center justify-center gap-1.5 rounded-pill bg-navy px-3 py-2.5 text-xs font-semibold text-cream">
@@ -84,20 +84,6 @@ export default function Plans() {
       ) : null}
 
       <div className="no-scrollbar flex flex-1 flex-col gap-3 overflow-y-auto">
-        {savedPlans.length > 0 ? (
-          <section aria-labelledby="saved-plans" className="mb-2">
-            <h2 id="saved-plans" className="mb-2 text-[10px] font-semibold tracking-[0.18em] text-navy/65 uppercase">Saved plans</h2>
-            <div className="flex flex-col gap-2">
-              {savedPlans.map(({ itinerary }) => (
-                <button key={itinerary.itineraryId} type="button" onClick={() => navigate("/plans/history")} className="rounded-card bg-peach/30 p-4 text-left ring-1 ring-clay/20 ring-inset">
-                  <span className="block text-sm font-semibold text-text">{itinerary.headline}</span>
-                  <span className="mt-1 block text-xs text-muted">{itinerary.dayLabel} · {itinerary.totalDurationMinutes} min · {itinerary.totalCostEstimate}</span>
-                  <span className="mt-2 block text-[10px] font-semibold tracking-wide text-clay uppercase">Added from Date Studio</span>
-                </button>
-              ))}
-            </div>
-          </section>
-        ) : null}
         {lockIns === null ? (
           // Explicit loading state. A blank screen that might be empty and
           // might be broken is the worst of both.
@@ -113,13 +99,52 @@ export default function Plans() {
             </p>
           </div>
         ) : (
-          lockIns.map((lockIn) => (
-            <ConnectionRow
-              key={lockIn.lockInId}
-              lockIn={lockIn}
-              onOpen={() => navigate(`/plans/${lockIn.lockInId}`)}
-            />
-          ))
+          lockIns.map((lockIn) => {
+            const personPlans = savedPlans.filter((plan) => plan.lockInId === lockIn.lockInId);
+            const personIdeas = sharedIdeas.filter((idea) => idea.lockInId === lockIn.lockInId);
+            const blocked = Boolean(lockIn.unavailableReason);
+            return (
+              <section key={lockIn.lockInId} aria-labelledby={`plans-${lockIn.lockInId}`} className="overflow-hidden rounded-card bg-surface shadow-[0_10px_24px_-20px_rgba(2,0,13,0.55)] ring-1 ring-navy/10 ring-inset">
+                <div className="flex items-center gap-3 border-b border-navy/10 p-4">
+                  <PersonAvatar photo={lockIn.person.profilePhoto} seed={lockIn.person.avatarSeed} name={lockIn.person.displayName} size={46} />
+                  <div className="min-w-0 flex-1">
+                    <h2 id={`plans-${lockIn.lockInId}`} className="truncate text-base font-semibold text-text">{lockIn.person.displayName}</h2>
+                    <p className="mt-0.5 text-[11px] text-muted">
+                      {lockIn.unavailableReason ?? `${personPlans.length} saved ${personPlans.length === 1 ? "plan" : "plans"} · ${personIdeas.length} shared ${personIdeas.length === 1 ? "idea" : "ideas"}`}
+                    </p>
+                  </div>
+                  <button type="button" disabled={blocked} onClick={() => navigate(`/plans/${lockIn.lockInId}`)} aria-label={`Create a plan with ${lockIn.person.displayName}`} className="grid size-10 shrink-0 place-items-center rounded-full bg-navy text-cream disabled:opacity-35">
+                    <Plus size={17} />
+                  </button>
+                </div>
+
+                {personPlans.length > 0 ? (
+                  <div className="px-4 py-3">
+                    <p className="mb-2 text-[9px] font-semibold tracking-[0.16em] text-navy/60 uppercase">Saved plans</p>
+                    {personPlans.map(({ itinerary }) => (
+                      <button key={itinerary.itineraryId} type="button" onClick={() => navigate("/plans/history")} className="flex w-full items-center gap-3 border-t border-navy/10 py-2.5 text-left first:border-0 first:pt-0 last:pb-0">
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-text">{itinerary.headline}</span>
+                          <span className="mt-0.5 block truncate text-[11px] text-muted">{itinerary.dayLabel} · {itinerary.totalDurationMinutes} min · {itinerary.totalCostEstimate}</span>
+                        </span>
+                        <ChevronRight size={15} className="shrink-0 text-navy/55" />
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <button type="button" disabled={blocked} onClick={() => navigate(`/plans/${lockIn.lockInId}`)} className="flex w-full items-center justify-between px-4 py-3 text-left text-xs font-medium text-navy disabled:opacity-40">
+                    Plan something with {lockIn.person.displayName}<ChevronRight size={15} />
+                  </button>
+                )}
+
+                {personIdeas.length > 0 ? (
+                  <button type="button" onClick={() => navigate("/plans/ideas")} className="flex w-full items-center justify-between border-t border-navy/10 bg-peach/25 px-4 py-3 text-xs font-semibold text-navy">
+                    {personIdeas.length} shared {personIdeas.length === 1 ? "idea" : "ideas"}<ChevronRight size={15} />
+                  </button>
+                ) : null}
+              </section>
+            );
+          })
         )}
 
         {lockIns && lockIns.length > 0 ? (
@@ -139,35 +164,5 @@ export default function Plans() {
         ) : null}
       </div>
     </div>
-  );
-}
-
-function ConnectionRow({
-  lockIn,
-  onOpen,
-}: {
-  lockIn: PlanLockIn;
-  onOpen: () => void;
-}) {
-  const blocked = Boolean(lockIn.unavailableReason);
-
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      disabled={blocked}
-      className="flex items-center gap-3 rounded-card bg-surface px-3.5 py-3 text-left ring-1 ring-white/[0.06] ring-inset transition-colors hover:bg-white/[0.07] disabled:opacity-50 disabled:hover:bg-surface"
-    >
-      <Avatar seed={lockIn.person.avatarSeed} size={40} />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm text-text">
-          {lockIn.person.displayName}
-        </span>
-        <span className="block truncate text-xs text-muted">
-          {/* The reason, not a dead button. */}
-          {lockIn.unavailableReason ?? "Plan something"}
-        </span>
-      </span>
-    </button>
   );
 }

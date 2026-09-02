@@ -189,7 +189,7 @@ Six graded metrics (schema validation, tool-call success, loop discipline, token
    encounters and the most connections**, 30d → 235. Default left at 30 as
    specified — changing a product parameter because our own simulator preferred
    it would be tuning the evaluation.
-2. Lock-in ceiling of 5 — chosen for attention scarcity, not measured. The sweep
+2. Lock-in ceiling of 10 — the current product capacity, not measured. The sweep
    exists but the simulator cannot model attention: simulated people never get
    overwhelmed, so a higher ceiling "winning" there is a limitation, not a finding.
 3. Continuity note retention, currently 90 days. Needs justification before any pilot.

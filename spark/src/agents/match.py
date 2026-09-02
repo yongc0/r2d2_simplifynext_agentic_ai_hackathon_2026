@@ -192,7 +192,7 @@ class MatchAgent:
 
     client: MCPClient
     trust: TrustAndSafety
-    max_lockins: int = 5
+    max_lockins: int = 10
     name: str = "match"
 
     def score(
@@ -464,7 +464,7 @@ class RandomArm:
     client: MCPClient
     trust: TrustAndSafety
     rng: random.Random
-    max_lockins: int = 5
+    max_lockins: int = 10
     name: str = "random"
 
     def select(
@@ -514,7 +514,7 @@ class SimilarityArm:
 
     client: MCPClient
     trust: TrustAndSafety
-    max_lockins: int = 5
+    max_lockins: int = 10
     name: str = "similarity"
 
     def select(

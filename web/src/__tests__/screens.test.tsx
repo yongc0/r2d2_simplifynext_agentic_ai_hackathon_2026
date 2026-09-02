@@ -145,33 +145,30 @@ describe("/reveal — the only screen that may show a name", () => {
 // ---------------------------------------------------------------------------
 
 describe("/lockins — five slots", () => {
-  it("renders five slots, with the empty ones visible", async () => {
+  it("renders ten slots, with the empty ones visible", async () => {
     await afterMutualYes();
     renderAt("/lockins");
 
-    await screen.findByText(/1 of 5/);
-    // Four drawn empties, not four absences. Scarcity has to be legible.
-    expect(await screen.findAllByLabelText(/empty lock-in slot/i)).toHaveLength(4);
+    await screen.findByText(/1 of 10/);
+    // Nine drawn empties, not nine absences. Capacity has to be legible.
+    expect(await screen.findAllByLabelText(/empty lock-in slot/i)).toHaveLength(9);
   });
 
-  it("shows five empties before anyone is connected", async () => {
+  it("shows ten empties before anyone is connected", async () => {
     renderAt("/lockins");
-    expect(await screen.findAllByLabelText(/empty lock-in slot/i)).toHaveLength(5);
-    expect(screen.getByText(/0 of 5/)).toBeVisible();
+    expect(await screen.findAllByLabelText(/empty lock-in slot/i)).toHaveLength(10);
+    expect(screen.getByText(/0 of 10/)).toBeVisible();
   });
 
-  it("shows a brief that cites something the pair actually discussed", async () => {
+  it("keeps the card focused on planning and chat", async () => {
     await afterMutualYes();
     renderAt("/lockins");
 
-    // `toBeInTheDocument`, not `toBeVisible`: the card animates in from
-    // opacity 0 and jsdom does not run the animation, so visibility here would
-    // be asserting something about framer-motion rather than about the brief.
-    const brief = await screen.findByText(new RegExp(CONTINUITY_CITATION, "i"));
-    expect(brief).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /ask how it went/i }),
-    ).toBeInTheDocument();
+    await screen.findByText(/1 of 10/);
+    expect(screen.getByRole("button", { name: /plan something/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /chat with belen/i })).toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(CONTINUITY_CITATION, "i"))).toBeNull();
+    expect(screen.queryByRole("button", { name: /ask how it went/i })).toBeNull();
   });
 
   it("treats a quiet lock-in without guilt", async () => {
@@ -196,7 +193,7 @@ describe("/lockins — five slots", () => {
   it("renders no location", async () => {
     await afterMutualYes();
     const { container } = renderAt("/lockins");
-    await screen.findByText(/1 of 5/);
+    await screen.findByText(/1 of 10/);
     expect(scanForLocation(container.textContent ?? "")).toHaveLength(0);
   });
 });
@@ -235,7 +232,7 @@ describe("the full mock path", () => {
 
     const heading = await screen.findByRole("heading", { name: /lock-ins/i });
     expect(heading).toBeInTheDocument();
-    expect(await screen.findByText(/1 of 5/)).toBeInTheDocument();
+    expect(await screen.findByText(/1 of 10/)).toBeInTheDocument();
   }, 30_000);
 });
 
@@ -264,7 +261,7 @@ describe("demo controls", () => {
 
     // Let the screen settle before asserting, so its own fetch does not land
     // outside the test.
-    await screen.findByText(/five at a time/i);
+    await screen.findByText(/ten at a time/i);
 
     // The strip is behind ?demo=1, which MemoryRouter cannot set, so drive the
     // component's action surface directly through the store-backed adapter.

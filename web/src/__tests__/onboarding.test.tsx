@@ -32,8 +32,11 @@ import {
 import { useSpark } from "../store/useSpark";
 import { scanForLocation } from "./scanners";
 
+let adapter: MockAdapter;
+
 beforeEach(() => {
-  const adapter = new MockAdapter();
+  localStorage.clear();
+  adapter = new MockAdapter();
   adapter.reset(42);
   setAdapter(adapter);
   useSpark.getState().reset();
@@ -171,7 +174,7 @@ describe("live chip extraction", () => {
     fireEvent.click(screen.getByRole("button", { name: /happy/i }));
     fireEvent.click(screen.getByRole("button", { name: /adventurous/i }));
     fireEvent.click(
-      screen.getByRole("button", { name: "Continue with 3 traits" }),
+      screen.getByRole("button", { name: "Done · 3 traits" }),
     );
 
     await waitFor(() => expect(chipPanel()).toHaveTextContent("Outgoing"));
@@ -266,6 +269,7 @@ describe("intent is never inferred", () => {
       expect(screen.getByRole("button", { name: "Friends" })).toBeVisible();
     });
     fireEvent.click(screen.getByRole("button", { name: "Friends" }));
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
 
     await waitFor(() => expect(chipPanel()).toHaveTextContent("Friends"));
 
@@ -281,6 +285,42 @@ describe("intent is never inferred", () => {
 // ---------------------------------------------------------------------------
 
 describe("profile topic choices", () => {
+  it("persists a complete typed answer into the profile used for matching", async () => {
+    renderOnboarding();
+    await say(
+      "I want to make friends. I am optimistic and independent. I enjoy coffee and reading. Honesty and kindness matter to me. I speak English and Mandarin.",
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "Continue" }),
+    ).toBeVisible();
+
+    const profile = await adapter.getProfile();
+    expect(profile.intents).toEqual(["friends"]);
+    expect(profile.interests).toEqual(["reading", "coffee"]);
+    expect(profile.values).toEqual(["honesty", "kindness"]);
+    expect(profile.personality).toBe("optimistic, independent");
+    expect(profile.languages).toEqual(["english", "mandarin"]);
+    expect((await adapter.getEncounter()).sharedInterests).toContain("coffee");
+    expect(localStorage.getItem("spark.profile-chips.v1")).toContain("Optimistic");
+  }, 15_000);
+
+  it("does not claim onboarding is complete when the profile save fails", async () => {
+    adapter.updateProfile = async () => {
+      throw new Error("profile service unavailable");
+    };
+    renderOnboarding();
+    await say(
+      "I want to make friends. I am optimistic. I enjoy coffee. Honesty matters to me. I speak English.",
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /could not save.*profile service unavailable/i,
+    );
+    expect(screen.getByRole("button", { name: /try saving again/i })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
+  }, 15_000);
+
   it("asks about values after intent, interests and characteristics are known", async () => {
     renderOnboarding();
     await say("I am outgoing and I enjoy coffee.");
@@ -288,6 +328,7 @@ describe("profile topic choices", () => {
     await screen.findByLabelText("Choose what you are looking for");
 
     fireEvent.click(screen.getByRole("button", { name: "Friends" }));
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
 
     expect(
       await screen.findByLabelText("Choose values"),
@@ -303,16 +344,54 @@ describe("profile topic choices", () => {
 
     await screen.findByLabelText("Choose characteristics");
     fireEvent.click(screen.getByRole("button", { name: "Thoughtful" }));
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     await screen.findByLabelText("Choose values");
     fireEvent.click(screen.getByRole("button", { name: "Honesty" }));
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     await screen.findByLabelText("Choose languages");
     fireEvent.click(screen.getByRole("button", { name: "English" }));
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
 
     await waitFor(() => expect(chipPanel()).toHaveTextContent("English"));
     expect(screen.queryByText(/which part of the day/i)).not.toBeInTheDocument();
     expect(
       await screen.findByRole("button", { name: "Continue" }),
     ).toBeVisible();
+  }, 15_000);
+
+  it("allows several explicit intents before Done", async () => {
+    renderOnboarding();
+    await say("I enjoy reading in the evenings.");
+
+    await screen.findByLabelText("Choose what you are looking for");
+    fireEvent.click(screen.getByRole("button", { name: "Something long term" }));
+    fireEvent.click(screen.getByRole("button", { name: "Friends" }));
+
+    expect(screen.getByRole("button", { name: "Something long term" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Friends" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByLabelText("Choose characteristics")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(chipPanel()).toHaveTextContent("Something long term"));
+    expect(chipPanel()).toHaveTextContent("Friends");
+  }, 15_000);
+
+  it("lets people select several options before Done advances the chat", async () => {
+    renderOnboarding();
+    await say("I enjoy coffee and I am looking for something long term.");
+
+    await screen.findByLabelText("Choose characteristics");
+    fireEvent.click(screen.getByRole("button", { name: "Curious" }));
+    fireEvent.click(screen.getByRole("button", { name: "Thoughtful" }));
+
+    expect(screen.getByRole("button", { name: "Curious" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Thoughtful" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByLabelText("Choose values")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(chipPanel()).toHaveTextContent("Curious"));
+    expect(chipPanel()).toHaveTextContent("Thoughtful");
+    expect(await screen.findByLabelText("Choose values")).toBeVisible();
   }, 15_000);
 });
 

@@ -12,7 +12,8 @@ import {
   KNOWN_VALUES,
 } from "../api/extract";
 import type { ChipKind, Intent, ProfileChip } from "../api/types";
-import { intentLabel, intentValue } from "../api/wire";
+import { intentLabel } from "../api/wire";
+import { cacheProfileChips, profilePatchFromChips } from "../api/profile";
 import { useSpark } from "../store/useSpark";
 
 /**
@@ -112,25 +113,12 @@ export default function Profile() {
       return;
     }
     if (chips.length === 0) return;
-    const intent = chips.find((c) => c.kind === "intent");
     void getAdapter()
-      .updateProfile({
-        ...(intent ? { intents: [intentValue(intent.label)] } : {}),
-        interests: chips
-          .filter((c) => c.kind === "interest")
-          .map((c) => c.label.toLowerCase()),
-        values: chips
-          .filter((c) => c.kind === "value")
-          .map((c) => c.label.toLowerCase()),
-        languages: chips
-          .filter((c) => c.kind === "language")
-          .map((c) => c.label.toLowerCase()),
-        personality: chips
-          .filter((c) => c.kind === "trait")
-          .map((c) => c.label.toLowerCase())
-          .join(", "),
+      .updateProfile(profilePatchFromChips(chips))
+      .then(() => {
+        cacheProfileChips(chips);
+        setSaveError(null);
       })
-      .then(() => setSaveError(null))
       .catch((cause: unknown) =>
         setSaveError(
           cause instanceof Error ? cause.message : String(cause),

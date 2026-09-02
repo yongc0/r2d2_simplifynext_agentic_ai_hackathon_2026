@@ -1,11 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { HeartHandshake, Mic2, Sparkles } from "lucide-react";
+import { CheckCheck, HeartHandshake, MessageCircle, Mic2, Search, Sparkles } from "lucide-react";
 
 import { getAdapter } from "../api/adapter";
-import { Avatar } from "../components/Avatar";
+import { PersonAvatar } from "../components/PersonAvatar";
 import { NAV_HEIGHT_CLASS } from "../components/AppNav";
 import { useSpark } from "../store/useSpark";
+import type { ChatMessage } from "../store/useSpark";
 
 /**
  * /home — spontaneous encounter state. There is intentionally no countdown:
@@ -20,6 +21,8 @@ export default function Home() {
   // An empty profile is the one thing that genuinely blocks the product from
   // working, so it is the one thing home will interrupt itself to mention.
   const chips = useSpark((s) => s.chips);
+  const chats = useSpark((s) => s.chats);
+  const [chatQuery, setChatQuery] = useState("");
 
   const open = forcedOpen;
 
@@ -40,9 +43,12 @@ export default function Home() {
   }, [setLockIns]);
 
   const active = lockIns.filter((l) => l.state !== "released");
+  const filteredChats = active.filter((lockIn) =>
+    lockIn.person.displayName.toLowerCase().includes(chatQuery.trim().toLowerCase()),
+  );
 
   return (
-    <div className={`flex h-full flex-col px-6 ${NAV_HEIGHT_CLASS}`}>
+    <div className={`no-scrollbar h-full overflow-y-auto px-6 ${NAV_HEIGHT_CLASS}`}>
       <div className="flex flex-col gap-3">
         <p className="text-[10px] font-semibold tracking-[0.2em] text-navy/60 uppercase">
           On Spark
@@ -57,7 +63,7 @@ export default function Home() {
           </p>
         ) : (
           <p className="text-sm leading-relaxed text-muted">
-            There is no timer to watch. We will let you know the moment a suitable encounter is available.
+            We will let you know the moment a suitable encounter is available.
           </p>
         )}
       </div>
@@ -125,51 +131,70 @@ export default function Home() {
         </ol>
       </section>
 
-      {/* Below the fold: the lock-ins, and nothing else. No feed, no
-          suggestions, no "people you might like". */}
-      {active.length > 0 ? (
-        <section className="mt-12 flex flex-col gap-2">
-          <h2 className="mb-1 text-[10px] tracking-[0.2em] text-muted uppercase">
-            Lock-ins
-          </h2>
-          {active.map((lockIn) => (
-            <button
-              key={lockIn.lockInId}
-              type="button"
-              onClick={() => navigate("/lockins")}
-              className="flex items-center gap-3 rounded-card bg-surface px-3.5 py-3 text-left shadow-[0_8px_20px_-18px_rgba(2,0,13,0.7)] ring-1 ring-navy/10 ring-inset transition-transform hover:-translate-y-0.5"
-            >
-              <Avatar seed={lockIn.person.avatarSeed} size={36} />
-              <span className="truncate text-sm text-text">
-                {lockIn.person.displayName}
-              </span>
-              {lockIn.state === "quiet" ? (
-                <span className="ml-auto shrink-0 text-[11px] text-muted">
-                  quiet
+      <section aria-labelledby="lock-in-chats" className="mt-8 overflow-hidden rounded-card bg-surface shadow-[0_12px_28px_-22px_rgba(2,0,13,0.65)] ring-1 ring-navy/10 ring-inset">
+        <div className="flex items-center justify-between px-4 pt-4">
+          <div>
+            <p className="text-[9px] font-semibold tracking-[0.18em] text-navy/60 uppercase">Lock-in inbox</p>
+            <h2 id="lock-in-chats" className="mt-0.5 text-lg font-semibold text-text">Chats</h2>
+          </div>
+          <button type="button" onClick={() => navigate("/lockins")} aria-label="View all lock-ins" className="grid size-9 place-items-center rounded-full bg-navy text-cream">
+            <MessageCircle size={16} />
+          </button>
+        </div>
+
+        <label className="mx-4 mt-3 flex items-center gap-2 rounded-xl bg-cream/65 px-3 py-2.5 text-navy ring-1 ring-navy/10 ring-inset">
+          <Search size={16} aria-hidden="true" />
+          <input value={chatQuery} onChange={(event) => setChatQuery(event.target.value)} aria-label="Search lock-in chats" placeholder="Search" className="min-w-0 flex-1 bg-transparent text-sm text-text placeholder:text-muted/65 focus:outline-none" />
+        </label>
+
+        <div className="mt-3">
+          {filteredChats.length > 0 ? filteredChats.map((lockIn) => {
+            const messages = chats[lockIn.lockInId] ?? [];
+            const last = messages[messages.length - 1];
+            const unread = messages.filter((message) => message.from === "them").length;
+            return (
+              <button key={lockIn.lockInId} type="button" onClick={() => navigate(`/lockins/${lockIn.lockInId}/chat`)} className="flex w-full items-center gap-3 border-t border-navy/10 px-4 py-3 text-left transition-colors first:border-t-0 hover:bg-cream/45">
+                <PersonAvatar photo={lockIn.person.profilePhoto} seed={lockIn.person.avatarSeed} name={lockIn.person.displayName} size={48} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate text-sm font-semibold text-text">{lockIn.person.displayName}</span>
+                    <span className="ml-auto flex shrink-0 items-center gap-1 text-[10px] text-muted/70">
+                      {last?.from === "you" ? <CheckCheck size={13} className="text-clay" aria-label="Sent" /> : null}
+                      {last ? chatTime(last.sentAt) : ""}
+                    </span>
+                  </span>
+                  <span className="mt-0.5 flex items-center gap-2">
+                    <span className="truncate text-xs text-muted">{chatPreview(last)}</span>
+                    {unread > 0 ? <span className="ml-auto grid size-5 shrink-0 place-items-center rounded-full bg-clay text-[10px] font-semibold text-white">{unread}</span> : null}
+                  </span>
                 </span>
-              ) : null}
-            </button>
-          ))}
-        </section>
-      ) : null}
+              </button>
+            );
+          }) : (
+            <p className="border-t border-navy/10 px-4 py-5 text-center text-xs leading-relaxed text-muted">
+              {active.length === 0 ? "Your lock-in conversations will appear here." : "No chats match that search."}
+            </p>
+          )}
+        </div>
+      </section>
 
-      {active.length > 0 ? (
-        <button
-          type="button"
-          onClick={() => navigate("/plans")}
-          className="mt-4 w-full rounded-pill bg-cream/70 px-6 py-3 text-sm font-medium text-navy ring-1 ring-navy/10 ring-inset transition-colors hover:bg-cream"
-        >
-          Plan something
-        </button>
-      ) : null}
-
-      <div className="flex-1" />
-
-      <p className="text-center text-xs font-medium leading-relaxed text-muted">
+      <p className="mt-8 text-center text-xs font-medium leading-relaxed text-muted">
         One person a day. Three minutes. No names unless you both say yes.
       </p>
     </div>
   );
+}
+
+function chatPreview(message: ChatMessage | undefined): string {
+  if (!message) return "Start a conversation";
+  if (message.text) return message.text;
+  if (message.attachment?.kind === "photo") return "Photo";
+  if (message.attachment?.kind === "voice") return "Voice message";
+  return message.attachment?.name ?? "Document";
+}
+
+function chatTime(value: string): string {
+  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(value));
 }
 function HomeStep({
   Icon,

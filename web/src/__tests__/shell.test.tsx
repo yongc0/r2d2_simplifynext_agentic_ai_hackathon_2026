@@ -27,7 +27,7 @@ const STUB_ROUTES: string[] = [];
 const BUILT_ROUTES: [string, RegExp][] = [
   ["/onboarding", /start as a verified person/i],
   ["/home", /one person a day/i],
-  ["/lockins", /five at a time, so each one gets your attention/i],
+  ["/lockins", /ten at a time, so every connection still gets your attention/i],
 
   ["/encounter", /you crossed paths today/i],
   ["/encounter/waiting", /waiting for the other person/i],

@@ -90,8 +90,8 @@ from src.schemas.itinerary import USER_SETTABLE_STATUSES, DateItinerary
 router = APIRouter(prefix="/api")
 
 #: What the intake span is labelled with. NOT a user: there is no auth yet
-#: (docs/PILOT.md §8.4), nothing is persisted, and a real id here would imply a
-#: durable profile that does not exist.
+#: (docs/PILOT.md §8.4), this extraction call itself persists nothing, and a
+#: real id here would imply the transcript is already attached to an account.
 _INTAKE_SPAN_USER = "demo-intake"
 
 
@@ -278,9 +278,10 @@ def onboarding_extract(body: ExtractIn) -> ExtractionOut:
     comes back with `unresolved: ["intent"]` and the client asks, rather than
     someone being matched under a reading of their tone.
 
-    No auth yet (docs/PILOT.md §8.4), so this extracts for the demo user and
-    persists nothing. Intake is client-side state until there is a user to
-    attach it to.
+    No auth yet (docs/PILOT.md §8.4), so this extraction call does not persist
+    the transcript. Once all required topics are present, the client commits the
+    structured result through ``PUT /profile``; that updates the same Profile
+    object the Match Agent reads without retaining the conversation itself.
     """
     agent = OnboardingAgent(trust=get_session().runtime.trust)
     extraction = agent.extract(_INTAKE_SPAN_USER, body.transcript)

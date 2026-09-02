@@ -235,7 +235,7 @@ Implemented as a LangGraph `interrupt()`: state checkpoints, resumes on both app
 
 ### 13.4 Continuity — `LLM` · *Personalized* — **the "over time" agent**
 
-Owns up to five active lock-ins per user across weeks.
+Owns up to ten active lock-ins per user across weeks.
 
 - Retains what the pair actually discussed; surfaces it before the next contact
 - Detects a lock-in going quiet and offers a concrete re-entry rather than a generic nudge
@@ -289,7 +289,7 @@ Screens onboarding text and post-reveal messages for harassment, sexual content,
 ## 15. Data model
 
 ```
-User          id, profile, consent_scope, verification_tier, blocklist[], lockin_slots(≤5)
+User          id, profile, consent_scope, verification_tier, blocklist[], lockin_slots(≤10)
 Overlap       user_a, user_b, cell_id, time_bucket, date        # coarse, historical only
 MatchDecision date, user_id, candidate_id, rationale, confidence
 Encounter     match_id, state, accepted[], call_started, call_ended, trace_id
@@ -517,6 +517,6 @@ tuning the evaluation — but the number is now evidence rather than a feeling.
 1. **Interviews — blocking.** Pressure-test Q3 fails until we have spoken to at least one person in our target. Everything else in this document rests on an unverified statement.
 2. The fifth pressure-test question was not captured from the slide; recover it from the organisers.
 3. Cooldown window before two users can be re-matched: currently a guess.
-4. Lock-in ceiling of five: chosen for attention scarcity, not measured. Worth a simulation sweep.
+4. Lock-in ceiling of ten: the current product capacity; its attention trade-off is not yet measured.
 5. Continuity note retention: 90 days by default. That number needs a real justification before any pilot.
 6. Voice-channel safety screening is materially harder than text. Either specify the approach or scope screening to post-reveal chat and say so.

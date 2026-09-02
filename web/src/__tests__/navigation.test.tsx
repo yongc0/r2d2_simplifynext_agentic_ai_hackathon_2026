@@ -32,6 +32,7 @@ import { useSpark } from "../store/useSpark";
 let adapter: MockAdapter;
 
 beforeEach(async () => {
+  localStorage.clear();
   adapter = new MockAdapter();
   await adapter.reset(42);
   setAdapter(adapter);
@@ -157,6 +158,33 @@ describe("the nav is absent where it would do harm", () => {
 // ---------------------------------------------------------------------------
 
 describe("/profile", () => {
+  it("restores a completed profile after a browser refresh", async () => {
+    localStorage.setItem(
+      "spark.profile-chips.v1",
+      JSON.stringify([
+        { kind: "intent", label: "Friends" },
+        { kind: "trait", label: "Optimistic" },
+        { kind: "interest", label: "Hiking" },
+        { kind: "value", label: "Honesty" },
+        { kind: "language", label: "English" },
+      ]),
+    );
+
+    renderAt("/home");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: /set up your profile/i })).toBeNull();
+    });
+    await waitFor(async () => {
+      const profile = await adapter.getProfile();
+      expect(profile.intents).toEqual(["friends"]);
+      expect(profile.interests).toEqual(["hiking"]);
+      expect(profile.values).toEqual(["honesty"]);
+      expect(profile.personality).toBe("optimistic");
+      expect(profile.languages).toEqual(["english"]);
+    });
+  });
+
   it("offers to set one up when there is nothing yet", async () => {
     renderAt("/profile");
     expect(await screen.findByText(/you have not set this up yet/i)).toBeInTheDocument();

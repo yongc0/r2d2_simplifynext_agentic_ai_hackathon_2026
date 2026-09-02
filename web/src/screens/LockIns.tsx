@@ -7,18 +7,18 @@ import { getAdapter } from "../api/adapter";
 import { PlanTheDateButton } from "../components/PlanTheDateButton";
 import { PersonAvatar } from "../components/PersonAvatar";
 import { MessageCircle } from "lucide-react";
-import type { ContinuityBrief, LockIn } from "../api/types";
+import type { LockIn } from "../api/types";
 import { NAV_HEIGHT_CLASS } from "../components/AppNav";
 import { useSpark } from "../store/useSpark";
 
 /**
- * /lockins — the five slots (FRONTEND.md §5.7).
+ * /lockins — ten intentional connection slots.
  *
- * "Five slots rendered as five slots, with empty ones visibly empty. Scarcity is
- * the point and should be legible at a glance."
+ * Ten slots rendered as ten slots, with empty ones visibly empty. Scarcity is
+ * still legible at a glance without limiting a person to five connections.
  *
  * So the empty slots are drawn, not omitted. A list that grows from nothing
- * looks like an app with no data in it; five outlines with one filled looks like
+ * looks like an app with no data in it; ten outlines with one filled looks like
  * a product that has decided something. It is the same argument as the empty
  * home screen: the absence IS the feature, and it has to be visible to work.
  *
@@ -33,13 +33,11 @@ import { useSpark } from "../store/useSpark";
  * `revealed`, not on whether the notification was accepted. This screen renders
  * whatever it is given, so that gate is the one that matters.
  */
-const SLOTS = 5;
+const SLOTS = 10;
 
 export default function LockIns() {
   const lockIns = useSpark((s) => s.lockIns);
-  const briefs = useSpark((s) => s.briefs);
   const setLockIns = useSpark((s) => s.setLockIns);
-  const setBriefs = useSpark((s) => s.setBriefs);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,13 +45,9 @@ export default function LockIns() {
     (async () => {
       try {
         const adapter = getAdapter();
-        const [nextLockIns, nextBriefs] = await Promise.all([
-          adapter.getLockIns(),
-          adapter.getBriefs(),
-        ]);
+        const nextLockIns = await adapter.getLockIns();
         if (cancelled) return;
         setLockIns(nextLockIns);
-        setBriefs(nextBriefs);
       } catch (cause) {
         if (!cancelled) {
           setError(cause instanceof Error ? cause.message : String(cause));
@@ -63,7 +57,7 @@ export default function LockIns() {
     return () => {
       cancelled = true;
     };
-  }, [setLockIns, setBriefs]);
+  }, [setLockIns]);
 
   const active = lockIns.filter((l) => l.state !== "released");
   const empty = Math.max(0, SLOTS - active.length);
@@ -90,7 +84,6 @@ export default function LockIns() {
           <Slot
             key={lockIn.lockInId}
             lockIn={lockIn}
-            brief={briefs.find((b) => b.lockInId === lockIn.lockInId)}
           />
         ))}
         {Array.from({ length: empty }, (_, i) => (
@@ -99,7 +92,7 @@ export default function LockIns() {
       </div>
 
       <p className="pt-5 text-center text-xs leading-relaxed text-muted">
-        Five at a time, so each one gets your attention.
+        Ten at a time, so every connection still gets your attention.
       </p>
     </div>
   );
@@ -107,10 +100,8 @@ export default function LockIns() {
 
 function Slot({
   lockIn,
-  brief,
 }: {
   lockIn: LockIn;
-  brief: ContinuityBrief | undefined;
 }) {
   const navigate = useNavigate();
   const reduced = useReducedMotion();
@@ -164,37 +155,15 @@ function Slot({
               button already knows who this is, so it asks nothing: everything
               the planner needs is on the lock-in the server is holding. */}
           {!released ? (
-            <div className="mt-3">
+            <div className="mt-3 flex flex-wrap gap-2">
               <PlanTheDateButton lockInId={lockIn.lockInId} />
-            </div>
-          ) : null}
-
-          {brief ? (
-            <div className="mt-3 border-l-2 border-accent/40 pl-3">
-              {/* The Continuity Agent cites something the pair actually
-                  discussed. A brief with nothing to cite is a reminder, not
-                  continuity, and the backend does not produce one. */}
-              <p className="text-sm leading-relaxed text-text/90 italic">
-                {brief.line}
-              </p>
-              <div className="mt-2.5 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="rounded-pill bg-white/[0.06] px-4 py-2 text-xs text-text transition-colors hover:bg-white/[0.1]"
-                >
-                  {brief.suggestedAction}
-                </button>
-                {/* The other half of the product: not only staying in touch,
-                    but doing something. Post-reveal only — a lock-in exists
-                    because two people already exchanged names. */}
-                <button
-                  type="button"
-                  onClick={() => navigate(`/plans/${lockIn.lockInId}`)}
-                  className="rounded-pill bg-accent/20 px-4 py-2 text-xs text-accent-soft ring-1 ring-accent/25 ring-inset transition-colors hover:bg-accent/30"
-                >
-                  Plan something
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => navigate(`/plans/${lockIn.lockInId}`)}
+                className="rounded-pill bg-cream px-4 py-2 text-xs font-semibold text-navy ring-1 ring-navy/15 ring-inset transition-colors hover:bg-peach/45"
+              >
+                Plan something
+              </button>
             </div>
           ) : null}
         </div>
@@ -209,7 +178,7 @@ function EmptySlot() {
     // Dashed rather than solid so it reads as "space for someone" rather than
     // as a card that failed to load.
     <div
-      className="grid h-[76px] place-items-center rounded-card border border-dashed border-white/[0.07]"
+      className="grid h-[64px] place-items-center rounded-card border border-dashed border-navy/20 bg-cream/20"
       aria-label="Empty lock-in slot"
     >
       <span className="text-xs text-muted/50">Open slot</span>

@@ -274,15 +274,11 @@ Then a genuinely uncertain waiting state. Do not animate a hopeful outcome befor
 
 The payoff. Names, generated avatar illustrations, shared interests. A restrained reveal animation — a fade and rise, not confetti. Then a single action: **Add to lock-ins**.
 
-### 5.7 `/lockins` — the five slots
+### 5.7 `/lockins` — the ten slots
 
-Five slots rendered as five slots, with empty ones visibly empty. Scarcity is the point and should be legible at a glance.
+Ten slots rendered as ten slots, with empty ones visibly empty. The capacity should be legible at a glance.
 
-Each active lock-in shows a **Continuity brief**:
-
-> **Mei** · connected 6 days ago
-> *She mentioned a certification exam on Thursday.*
-> `[ Ask how it went ]`
+Each active lock-in keeps chat and planning actions immediately available. Continuity remains available to the agent layer without placing follow-up reminders on the card.
 
 Quiet lock-ins get a distinct, non-guilting treatment. Released ones fade out rather than vanishing.
 

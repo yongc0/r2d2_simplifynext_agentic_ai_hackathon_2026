@@ -407,7 +407,7 @@ class SparkSession:
         self._lockins[lid] = lockin
 
         # A lock-in consumes a slot on both sides. The ceiling is what makes
-        # five connections feel like attention rather than a queue.
+        # ten connections remain a bounded attention pool rather than a feed.
         for uid in encounter.participants():
             user = WORLD.users[uid]
             user.lockin_slots = max(0, user.lockin_slots - 1)

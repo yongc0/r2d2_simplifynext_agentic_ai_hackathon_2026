@@ -8,6 +8,7 @@ import type { ChipKind, Intent, ProfileChip } from "../api/types";
 import { SingpassVerification } from "../components/SingpassVerification";
 import { ForeignerSignup } from "../components/ForeignerSignup";
 import { intentLabel } from "../api/wire";
+import { cacheProfileChips, profilePatchFromChips } from "../api/profile";
 import { useSpark } from "../store/useSpark";
 
 /**
@@ -91,6 +92,8 @@ export default function Onboarding() {
   /** True when the agent is waiting on an intent it may not infer. */
   const [askingIntent, setAskingIntent] = useState(false);
   const [askingTopic, setAskingTopic] = useState<string | null>(null);
+  const [pendingSave, setPendingSave] = useState<ProfileChip[] | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   /** Everything the person has actually said, in order. The extraction runs
    *  over the whole of it, never over the latest message alone. */
@@ -104,6 +107,26 @@ export default function Onboarding() {
     const el = scroller.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, thinking]);
+
+  const finishOnboarding = async (profileChips: ProfileChip[]) => {
+    try {
+      await getAdapter().updateProfile(profilePatchFromChips(profileChips));
+      cacheProfileChips(profileChips);
+      setPendingSave(null);
+      setSaveError(null);
+      setMessages((m) => [...m, { from: "agent", text: COMPLETE }]);
+      setComplete(true);
+    } catch (cause) {
+      setPendingSave(profileChips);
+      setSaveError(
+        cause instanceof Error
+          ? `I understood your answers, but could not save them: ${cause.message}`
+          : "I understood your answers, but could not save them. Please try again.",
+      );
+    } finally {
+      setThinking(false);
+    }
+  };
 
   const send = async (text: string) => {
     const said = text.trim();
@@ -129,21 +152,20 @@ export default function Onboarding() {
           all.findIndex(
             (candidate) => candidate.kind === chip.kind && candidate.label === chip.label,
           ) === index,
-      );
+    );
     setChips(merged);
-    setThinking(false);
 
     const next = REQUIRED_TOPICS.find(
       ({ kind }) => !merged.some((chip) => chip.kind === kind),
     );
     if (next) {
+      setThinking(false);
       setMessages((m) => [...m, { from: "agent", text: next.question }]);
       const needsIntent = next.topic === "intent";
       setAskingIntent(needsIntent);
       setAskingTopic(next.topic);
     } else {
-      setMessages((m) => [...m, { from: "agent", text: COMPLETE }]);
-      setComplete(true);
+      await finishOnboarding(merged);
     }
   };
 
@@ -229,17 +251,38 @@ export default function Onboarding() {
           </button>
         ) : (
           <div className="flex flex-col gap-3">
-            {askingIntent ? <IntentChoice onChoose={send} /> : null}
-            {askingTopic && askingTopic !== "intent" ? (
-              <TopicChoice topic={askingTopic} onChoose={send} />
+            {saveError ? (
+              <p role="alert" className="rounded-card bg-rose-100 px-4 py-3 text-xs font-medium leading-relaxed text-rose-800 ring-1 ring-rose-300 ring-inset">
+                {saveError}
+              </p>
             ) : null}
-            <Composer
-              value={draft}
-              onChange={setDraft}
-              onSend={sendDraft}
-              disabled={thinking}
-              placeholder={composerPlaceholder}
-            />
+            {pendingSave ? (
+              <button
+                type="button"
+                disabled={thinking}
+                onClick={() => {
+                  setThinking(true);
+                  void finishOnboarding(pendingSave);
+                }}
+                className="w-full rounded-pill bg-clay px-6 py-4 text-sm font-semibold text-white disabled:opacity-40"
+              >
+                Try saving again
+              </button>
+            ) : (
+              <>
+                {askingIntent ? <IntentChoice onDone={send} /> : null}
+                {askingTopic && askingTopic !== "intent" ? (
+                  <TopicChoice key={askingTopic} topic={askingTopic} onDone={send} />
+                ) : null}
+                <Composer
+                  value={draft}
+                  onChange={setDraft}
+                  onSend={sendDraft}
+                  disabled={thinking}
+                  placeholder={composerPlaceholder}
+                />
+              </>
+            )}
           </div>
         )}
       </div>
@@ -487,7 +530,7 @@ function TraitChoice({
           onClick={onContinue}
           className="mt-4 w-full rounded-pill bg-accent px-5 py-3 text-sm font-medium text-cream transition-opacity hover:opacity-90"
         >
-          Continue with {selected.length} {selected.length === 1 ? "trait" : "traits"}
+          Done · {selected.length} {selected.length === 1 ? "trait" : "traits"}
         </button>
       ) : null}
     </div>
@@ -511,19 +554,34 @@ const INTENT_SENTENCES: [Intent, string][] = [
   ["friends", "I am looking to make friends."],
 ];
 
-function IntentChoice({ onChoose }: { onChoose: (text: string) => void }) {
+function IntentChoice({ onDone }: { onDone: (text: string) => void }) {
+  const [selected, setSelected] = useState<Array<[Intent, string]>>([]);
+  const toggle = (choice: [Intent, string]) =>
+    setSelected((current) =>
+      current.some(([intent]) => intent === choice[0])
+        ? current.filter(([intent]) => intent !== choice[0])
+        : [...current, choice],
+    );
   return (
-    <div className="flex flex-col gap-2" aria-label="Choose what you are looking for">
-      {INTENT_SENTENCES.map(([intent, sentence]) => (
-        <button
-          key={intent}
-          type="button"
-          onClick={() => onChoose(sentence)}
-          className="w-full rounded-pill bg-surface px-6 py-3.5 text-[15px] text-text ring-1 ring-white/[0.06] ring-inset transition-colors hover:bg-white/[0.07]"
-        >
-          {intentLabel(intent)}
-        </button>
-      ))}
+    <div className="flex flex-col gap-2 rounded-card bg-cream/35 p-3 ring-1 ring-navy/10 ring-inset" aria-label="Choose what you are looking for">
+      <p className="text-[11px] font-medium text-muted">Choose one or more, then press Done.</p>
+      {INTENT_SENTENCES.map(([intent, sentence]) => {
+        const active = selected.some(([selectedIntent]) => selectedIntent === intent);
+        return (
+          <button
+            key={intent}
+            type="button"
+            aria-pressed={active}
+            onClick={() => toggle([intent, sentence])}
+            className={`w-full rounded-pill px-6 py-3 text-[15px] font-medium ring-1 ring-inset transition-colors ${active ? "bg-navy text-cream ring-navy" : "bg-surface text-text ring-navy/15 hover:bg-peach/35"}`}
+          >
+            {intentLabel(intent)}
+          </button>
+        );
+      })}
+      <button type="button" disabled={selected.length === 0} onClick={() => onDone(selected.map(([, sentence]) => sentence).join(" "))} className="mt-1 w-full rounded-pill bg-clay px-5 py-3 text-sm font-semibold text-white disabled:opacity-35">
+        Done
+      </button>
     </div>
   );
 }
@@ -535,20 +593,40 @@ const TOPIC_OPTIONS: Record<string, string[]> = {
   languages: ["English", "Mandarin", "Malay", "Tamil", "Cantonese", "Hokkien"],
 };
 
-function TopicChoice({ topic, onChoose }: { topic: string; onChoose: (text: string) => void }) {
+function TopicChoice({ topic, onDone }: { topic: string; onDone: (text: string) => void }) {
   const options = TOPIC_OPTIONS[topic] ?? [];
+  const [selected, setSelected] = useState<string[]>([]);
+  const toggle = (label: string) =>
+    setSelected((current) =>
+      current.includes(label)
+        ? current.filter((item) => item !== label)
+        : [...current, label],
+    );
   return (
-    <div className="grid grid-cols-2 gap-2" aria-label={`Choose ${topic}`}>
-      {options.map((label) => (
-        <button
-          key={label}
-          type="button"
-          onClick={() => onChoose(label)}
-          className="rounded-card bg-surface px-4 py-3.5 text-sm font-medium text-text ring-1 ring-navy/15 ring-inset transition-colors hover:bg-cream"
-        >
-          {label}
-        </button>
-      ))}
+    <div className="rounded-card bg-cream/35 p-3 ring-1 ring-navy/10 ring-inset" aria-label={`Choose ${topic}`}>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-[11px] font-medium text-muted">Select all that apply.</p>
+        <span className="text-[10px] font-semibold text-navy">{selected.length} selected</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {options.map((label) => {
+          const active = selected.includes(label);
+          return (
+            <button
+              key={label}
+              type="button"
+              aria-pressed={active}
+              onClick={() => toggle(label)}
+              className={`rounded-card px-4 py-3 text-sm font-medium ring-1 ring-inset transition-colors ${active ? "bg-navy text-cream ring-navy" : "bg-surface text-text ring-navy/15 hover:bg-cream"}`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      <button type="button" disabled={selected.length === 0} onClick={() => onDone(selected.join(", "))} className="mt-3 w-full rounded-pill bg-clay px-5 py-3 text-sm font-semibold text-white disabled:opacity-35">
+        Done
+      </button>
     </div>
   );
 }

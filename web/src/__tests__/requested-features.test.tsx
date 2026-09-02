@@ -5,8 +5,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { moderateMessage } from "../screens/Chat";
 import Chat from "../screens/Chat";
 import SharedDateIdeas from "../screens/SharedDateIdeas";
+import Home from "../screens/Home";
 import { SingpassVerification } from "../components/SingpassVerification";
 import { useSpark } from "../store/useSpark";
+import { MockAdapter } from "../api/mock";
+import { setAdapter } from "../api/adapter";
 
 const lockIn = {
   lockInId: "lock-test",
@@ -75,5 +78,25 @@ describe("requested profile and communication features", () => {
     fireEvent.click(within(card).getByRole("button", { name: /send an invite/i }));
     fireEvent.click(within(card).getByRole("button", { name: "Accept" }));
     expect(within(card).getByText("Invite accepted")).toBeVisible();
+  });
+
+  it("shows every lock-in in the Home chat list without timer copy", async () => {
+    const adapter = new MockAdapter();
+    adapter.getLockIns = async () => [lockIn];
+    setAdapter(adapter);
+    useSpark.getState().setLockIns([lockIn]);
+    useSpark.getState().sendChatMessage(lockIn.lockInId, {
+      from: "them",
+      text: "Are we still on for coffee?",
+    });
+    render(
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Home />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Chats" })).toBeVisible();
+    expect(screen.getByRole("button", { name: /Avery/ })).toHaveTextContent("Are we still on for coffee?");
+    expect(screen.queryByText("There is no timer to watch.")).toBeNull();
   });
 });

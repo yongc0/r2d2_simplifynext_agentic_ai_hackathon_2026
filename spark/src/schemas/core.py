@@ -248,7 +248,7 @@ class User(BaseModel):
     consent_scope: ConsentScope
     verification_tier: VerificationTier = VerificationTier.PHONE
     blocklist: list[UserId] = Field(default_factory=list)
-    lockin_slots: int = Field(default=5, ge=0, le=5)
+    lockin_slots: int = Field(default=10, ge=0, le=10)
     #: Stable, non-reversible pseudonym shown in an anonymous encounter. Set by
     #: `src/ids.py`; never derived from the display name.
     handle: str = ""

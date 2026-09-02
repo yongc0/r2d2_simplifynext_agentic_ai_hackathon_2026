@@ -53,7 +53,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "amber-heron"
       },
       "latent": {
@@ -123,7 +123,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "azure-heron"
       },
       "latent": {
@@ -190,7 +190,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "cobalt-heron"
       },
       "latent": {
@@ -263,7 +263,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "copper-heron"
       },
       "latent": {
@@ -331,7 +331,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "coral-heron"
       },
       "latent": {
@@ -400,7 +400,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "indigo-heron"
       },
       "latent": {
@@ -469,7 +469,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "ivory-heron"
       },
       "latent": {
@@ -540,7 +540,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "jade-heron"
       },
       "latent": {
@@ -609,7 +609,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "lilac-heron"
       },
       "latent": {
@@ -681,7 +681,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "olive-heron"
       },
       "latent": {
@@ -752,7 +752,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "russet-heron"
       },
       "latent": {
@@ -823,7 +823,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "saffron-heron"
       },
       "latent": {
@@ -896,7 +896,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "sepia-heron"
       },
       "latent": {
@@ -963,7 +963,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "slate-heron"
       },
       "latent": {
@@ -1035,7 +1035,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "teal-heron"
       },
       "latent": {
@@ -1105,7 +1105,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "umber-heron"
       },
       "latent": {
@@ -1174,7 +1174,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "amber-otter"
       },
       "latent": {
@@ -1242,7 +1242,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "azure-otter"
       },
       "latent": {
@@ -1313,7 +1313,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "cobalt-otter"
       },
       "latent": {
@@ -1382,7 +1382,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "copper-otter"
       },
       "latent": {
@@ -1449,7 +1449,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "coral-otter"
       },
       "latent": {
@@ -1520,7 +1520,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "indigo-otter"
       },
       "latent": {
@@ -1590,7 +1590,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "ivory-otter"
       },
       "latent": {
@@ -1659,7 +1659,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "jade-otter"
       },
       "latent": {
@@ -1729,7 +1729,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "lilac-otter"
       },
       "latent": {
@@ -1799,7 +1799,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "olive-otter"
       },
       "latent": {
@@ -1871,7 +1871,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "russet-otter"
       },
       "latent": {
@@ -1941,7 +1941,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "saffron-otter"
       },
       "latent": {
@@ -2010,7 +2010,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "sepia-otter"
       },
       "latent": {
@@ -2081,7 +2081,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "slate-otter"
       },
       "latent": {
@@ -2150,7 +2150,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "teal-otter"
       },
       "latent": {
@@ -2220,7 +2220,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "umber-otter"
       },
       "latent": {
@@ -2293,7 +2293,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "amber-sparrow"
       },
       "latent": {
@@ -2363,7 +2363,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "azure-sparrow"
       },
       "latent": {
@@ -2431,7 +2431,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "cobalt-sparrow"
       },
       "latent": {
@@ -2497,7 +2497,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "copper-sparrow"
       },
       "latent": {
@@ -2565,7 +2565,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "coral-sparrow"
       },
       "latent": {
@@ -2634,7 +2634,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "indigo-sparrow"
       },
       "latent": {
@@ -2704,7 +2704,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "ivory-sparrow"
       },
       "latent": {
@@ -2776,7 +2776,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "jade-sparrow"
       },
       "latent": {
@@ -2843,7 +2843,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "lilac-sparrow"
       },
       "latent": {
@@ -2911,7 +2911,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "olive-sparrow"
       },
       "latent": {
@@ -2981,7 +2981,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "russet-sparrow"
       },
       "latent": {
@@ -3047,7 +3047,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "saffron-sparrow"
       },
       "latent": {
@@ -3117,7 +3117,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "sepia-sparrow"
       },
       "latent": {
@@ -3188,7 +3188,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "slate-sparrow"
       },
       "latent": {
@@ -3255,7 +3255,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "teal-sparrow"
       },
       "latent": {
@@ -3325,7 +3325,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "umber-sparrow"
       },
       "latent": {
@@ -3393,7 +3393,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "amber-marten"
       },
       "latent": {
@@ -3462,7 +3462,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "azure-marten"
       },
       "latent": {
@@ -3532,7 +3532,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "cobalt-marten"
       },
       "latent": {
@@ -3601,7 +3601,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "copper-marten"
       },
       "latent": {
@@ -3671,7 +3671,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "coral-marten"
       },
       "latent": {
@@ -3738,7 +3738,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "indigo-marten"
       },
       "latent": {
@@ -3811,7 +3811,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "ivory-marten"
       },
       "latent": {
@@ -3880,7 +3880,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "jade-marten"
       },
       "latent": {
@@ -3954,7 +3954,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "lilac-marten"
       },
       "latent": {
@@ -4021,7 +4021,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "olive-marten"
       },
       "latent": {
@@ -4089,7 +4089,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "russet-marten"
       },
       "latent": {
@@ -4157,7 +4157,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "saffron-marten"
       },
       "latent": {
@@ -4228,7 +4228,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "sepia-marten"
       },
       "latent": {
@@ -4299,7 +4299,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "slate-marten"
       },
       "latent": {
@@ -4369,7 +4369,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "teal-marten"
       },
       "latent": {
@@ -4438,7 +4438,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "umber-marten"
       },
       "latent": {
@@ -4509,7 +4509,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "amber-gannet"
       },
       "latent": {
@@ -4581,7 +4581,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "azure-gannet"
       },
       "latent": {
@@ -4654,7 +4654,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "cobalt-gannet"
       },
       "latent": {
@@ -4722,7 +4722,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "copper-gannet"
       },
       "latent": {
@@ -4791,7 +4791,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "coral-gannet"
       },
       "latent": {
@@ -4862,7 +4862,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "indigo-gannet"
       },
       "latent": {
@@ -4929,7 +4929,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "ivory-gannet"
       },
       "latent": {
@@ -5001,7 +5001,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "jade-gannet"
       },
       "latent": {
@@ -5072,7 +5072,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "lilac-gannet"
       },
       "latent": {
@@ -5140,7 +5140,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "olive-gannet"
       },
       "latent": {
@@ -5206,7 +5206,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "russet-gannet"
       },
       "latent": {
@@ -5274,7 +5274,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "saffron-gannet"
       },
       "latent": {
@@ -5342,7 +5342,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "sepia-gannet"
       },
       "latent": {
@@ -5414,7 +5414,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "slate-gannet"
       },
       "latent": {
@@ -5485,7 +5485,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "teal-gannet"
       },
       "latent": {
@@ -5553,7 +5553,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "umber-gannet"
       },
       "latent": {
@@ -5620,7 +5620,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "amber-ibis"
       },
       "latent": {
@@ -5693,7 +5693,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "azure-ibis"
       },
       "latent": {
@@ -5763,7 +5763,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "cobalt-ibis"
       },
       "latent": {
@@ -5835,7 +5835,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "copper-ibis"
       },
       "latent": {
@@ -5907,7 +5907,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "coral-ibis"
       },
       "latent": {
@@ -5980,7 +5980,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "indigo-ibis"
       },
       "latent": {
@@ -6052,7 +6052,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "ivory-ibis"
       },
       "latent": {
@@ -6123,7 +6123,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "jade-ibis"
       },
       "latent": {
@@ -6192,7 +6192,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "lilac-ibis"
       },
       "latent": {
@@ -6267,7 +6267,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "olive-ibis"
       },
       "latent": {
@@ -6336,7 +6336,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "russet-ibis"
       },
       "latent": {
@@ -6405,7 +6405,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "saffron-ibis"
       },
       "latent": {
@@ -6473,7 +6473,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "sepia-ibis"
       },
       "latent": {
@@ -6547,7 +6547,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "slate-ibis"
       },
       "latent": {
@@ -6618,7 +6618,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "teal-ibis"
       },
       "latent": {
@@ -6690,7 +6690,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "umber-ibis"
       },
       "latent": {
@@ -6760,7 +6760,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "amber-lynx"
       },
       "latent": {
@@ -6834,7 +6834,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "azure-lynx"
       },
       "latent": {
@@ -6904,7 +6904,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "cobalt-lynx"
       },
       "latent": {
@@ -6973,7 +6973,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "copper-lynx"
       },
       "latent": {
@@ -7042,7 +7042,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "coral-lynx"
       },
       "latent": {
@@ -7113,7 +7113,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "indigo-lynx"
       },
       "latent": {
@@ -7182,7 +7182,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "ivory-lynx"
       },
       "latent": {
@@ -7251,7 +7251,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "jade-lynx"
       },
       "latent": {
@@ -7321,7 +7321,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "lilac-lynx"
       },
       "latent": {
@@ -7388,7 +7388,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "olive-lynx"
       },
       "latent": {
@@ -7458,7 +7458,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "russet-lynx"
       },
       "latent": {
@@ -7528,7 +7528,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "saffron-lynx"
       },
       "latent": {
@@ -7597,7 +7597,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "sepia-lynx"
       },
       "latent": {
@@ -7667,7 +7667,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "slate-lynx"
       },
       "latent": {
@@ -7734,7 +7734,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "teal-lynx"
       },
       "latent": {
@@ -7804,7 +7804,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "umber-lynx"
       },
       "latent": {
@@ -7874,7 +7874,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "amber-oriole"
       },
       "latent": {
@@ -7946,7 +7946,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "azure-oriole"
       },
       "latent": {
@@ -8017,7 +8017,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "cobalt-oriole"
       },
       "latent": {
@@ -8084,7 +8084,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "copper-oriole"
       },
       "latent": {
@@ -8153,7 +8153,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "coral-oriole"
       },
       "latent": {
@@ -8224,7 +8224,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "indigo-oriole"
       },
       "latent": {
@@ -8295,7 +8295,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "ivory-oriole"
       },
       "latent": {
@@ -8366,7 +8366,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "jade-oriole"
       },
       "latent": {
@@ -8432,7 +8432,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "lilac-oriole"
       },
       "latent": {
@@ -8506,7 +8506,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "olive-oriole"
       },
       "latent": {
@@ -8578,7 +8578,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "russet-oriole"
       },
       "latent": {
@@ -8650,7 +8650,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "saffron-oriole"
       },
       "latent": {
@@ -8722,7 +8722,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "sepia-oriole"
       },
       "latent": {
@@ -8788,7 +8788,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "slate-oriole"
       },
       "latent": {
@@ -8858,7 +8858,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "teal-oriole"
       },
       "latent": {
@@ -8929,7 +8929,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "umber-oriole"
       },
       "latent": {
@@ -8998,7 +8998,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "amber-plover"
       },
       "latent": {
@@ -9069,7 +9069,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "azure-plover"
       },
       "latent": {
@@ -9140,7 +9140,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "cobalt-plover"
       },
       "latent": {
@@ -9210,7 +9210,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "copper-plover"
       },
       "latent": {
@@ -9282,7 +9282,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "coral-plover"
       },
       "latent": {
@@ -9353,7 +9353,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "indigo-plover"
       },
       "latent": {
@@ -9422,7 +9422,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "ivory-plover"
       },
       "latent": {
@@ -9490,7 +9490,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "jade-plover"
       },
       "latent": {
@@ -9559,7 +9559,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "lilac-plover"
       },
       "latent": {
@@ -9630,7 +9630,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "olive-plover"
       },
       "latent": {
@@ -9701,7 +9701,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "russet-plover"
       },
       "latent": {
@@ -9771,7 +9771,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "saffron-plover"
       },
       "latent": {
@@ -9840,7 +9840,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "sepia-plover"
       },
       "latent": {
@@ -9912,7 +9912,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "slate-plover"
       },
       "latent": {
@@ -9980,7 +9980,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "teal-plover"
       },
       "latent": {
@@ -10054,7 +10054,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "umber-plover"
       },
       "latent": {
@@ -10123,7 +10123,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "amber-swift"
       },
       "latent": {
@@ -10196,7 +10196,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "azure-swift"
       },
       "latent": {
@@ -10264,7 +10264,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "cobalt-swift"
       },
       "latent": {
@@ -10334,7 +10334,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "copper-swift"
       },
       "latent": {
@@ -10409,7 +10409,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "coral-swift"
       },
       "latent": {
@@ -10477,7 +10477,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "indigo-swift"
       },
       "latent": {
@@ -10546,7 +10546,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "ivory-swift"
       },
       "latent": {
@@ -10617,7 +10617,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "jade-swift"
       },
       "latent": {
@@ -10689,7 +10689,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "lilac-swift"
       },
       "latent": {
@@ -10762,7 +10762,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "olive-swift"
       },
       "latent": {
@@ -10831,7 +10831,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "russet-swift"
       },
       "latent": {
@@ -10903,7 +10903,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "saffron-swift"
       },
       "latent": {
@@ -10974,7 +10974,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "sepia-swift"
       },
       "latent": {
@@ -11044,7 +11044,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "slate-swift"
       },
       "latent": {
@@ -11114,7 +11114,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "teal-swift"
       },
       "latent": {
@@ -11183,7 +11183,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "umber-swift"
       },
       "latent": {
@@ -11249,7 +11249,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "amber-tapir"
       },
       "latent": {
@@ -11321,7 +11321,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "azure-tapir"
       },
       "latent": {
@@ -11392,7 +11392,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "cobalt-tapir"
       },
       "latent": {
@@ -11465,7 +11465,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "copper-tapir"
       },
       "latent": {
@@ -11534,7 +11534,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "coral-tapir"
       },
       "latent": {
@@ -11605,7 +11605,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "indigo-tapir"
       },
       "latent": {
@@ -11677,7 +11677,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "ivory-tapir"
       },
       "latent": {
@@ -11748,7 +11748,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "jade-tapir"
       },
       "latent": {
@@ -11820,7 +11820,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "lilac-tapir"
       },
       "latent": {
@@ -11890,7 +11890,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "olive-tapir"
       },
       "latent": {
@@ -11962,7 +11962,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "russet-tapir"
       },
       "latent": {
@@ -12032,7 +12032,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "saffron-tapir"
       },
       "latent": {
@@ -12102,7 +12102,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "sepia-tapir"
       },
       "latent": {
@@ -12171,7 +12171,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "slate-tapir"
       },
       "latent": {
@@ -12240,7 +12240,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "teal-tapir"
       },
       "latent": {
@@ -12309,7 +12309,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "umber-tapir"
       },
       "latent": {
@@ -12382,7 +12382,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "amber-vireo"
       },
       "latent": {
@@ -12452,7 +12452,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "azure-vireo"
       },
       "latent": {
@@ -12521,7 +12521,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "cobalt-vireo"
       },
       "latent": {
@@ -12588,7 +12588,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "copper-vireo"
       },
       "latent": {
@@ -12655,7 +12655,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "coral-vireo"
       },
       "latent": {
@@ -12725,7 +12725,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "indigo-vireo"
       },
       "latent": {
@@ -12798,7 +12798,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "ivory-vireo"
       },
       "latent": {
@@ -12868,7 +12868,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "jade-vireo"
       },
       "latent": {
@@ -12935,7 +12935,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "lilac-vireo"
       },
       "latent": {
@@ -13005,7 +13005,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "olive-vireo"
       },
       "latent": {
@@ -13075,7 +13075,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "russet-vireo"
       },
       "latent": {
@@ -13146,7 +13146,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "saffron-vireo"
       },
       "latent": {
@@ -13217,7 +13217,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "sepia-vireo"
       },
       "latent": {
@@ -13287,7 +13287,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "slate-vireo"
       },
       "latent": {
@@ -13353,7 +13353,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "teal-vireo"
       },
       "latent": {
@@ -13421,7 +13421,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "umber-vireo"
       },
       "latent": {
@@ -13488,7 +13488,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "amber-wren"
       },
       "latent": {
@@ -13553,7 +13553,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "azure-wren"
       },
       "latent": {
@@ -13622,7 +13622,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "cobalt-wren"
       },
       "latent": {
@@ -13694,7 +13694,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "copper-wren"
       },
       "latent": {
@@ -13764,7 +13764,7 @@
         },
         "verification_tier": "government_id",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "coral-wren"
       },
       "latent": {
@@ -13835,7 +13835,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "indigo-wren"
       },
       "latent": {
@@ -13908,7 +13908,7 @@
         },
         "verification_tier": "unverified",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "ivory-wren"
       },
       "latent": {
@@ -13977,7 +13977,7 @@
         },
         "verification_tier": "phone",
         "blocklist": [],
-        "lockin_slots": 5,
+        "lockin_slots": 10,
         "handle": "jade-wren"
       },
       "latent": {

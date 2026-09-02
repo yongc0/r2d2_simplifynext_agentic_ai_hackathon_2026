@@ -100,7 +100,7 @@ export default function Reveal() {
           Add to lock-ins
         </button>
         <p className="text-center text-xs leading-relaxed text-muted">
-          Five at a time. That is deliberate.
+          Ten at a time. That is deliberate.
         </p>
       </div>
     </motion.div>

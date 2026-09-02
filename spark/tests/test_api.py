@@ -1139,3 +1139,33 @@ def test_settings_and_the_encounter_agree_about_who_you_are(
 
     eid = open_encounter(client)
     assert session.require_encounter(eid).user_a == viewer
+
+
+def test_profile_update_writes_the_profile_the_match_agent_reads(
+    client: TestClient,
+) -> None:
+    """Onboarding's final write must not land in a UI-only profile copy."""
+    session = get_session()
+    viewer = session.viewer_user_id()
+
+    response = client.put(
+        "/api/profile",
+        json={
+            "intents": ["friends", "partner_long_term"],
+            "interests": ["coffee", "reading"],
+            "values": ["honesty", "kindness"],
+            "personality": "optimistic, independent",
+            "languages": ["english", "mandarin"],
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    matchable = session.user(viewer).profile
+    assert [intent.value for intent in matchable.intents] == [
+        "friends",
+        "partner_long_term",
+    ]
+    assert matchable.interests == ["coffee", "reading"]
+    assert matchable.values == ["honesty", "kindness"]
+    assert matchable.personality == "optimistic, independent"
+    assert matchable.languages == ["english", "mandarin"]

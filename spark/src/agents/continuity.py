@@ -2,7 +2,7 @@
 
 docs/ARCHITECTURE.md §13.4. **This is the agent that makes the "plans, acts and
 adapts over time" claim true.** Everything else in Spark happens inside one
-evening; this one owns up to five lock-ins per user across weeks.
+evening; this one owns up to ten lock-ins per user across weeks.
 
 What it does, and what each one is for:
 
@@ -203,7 +203,7 @@ class ContinuityAgent:
             # A long silence gets ONE concrete way back in. If it is still
             # quiet after that, the lock-in is let go and the slot freed —
             # releasing is kind, and holding a dead connection open costs the
-            # user one of only five slots.
+            # user one of only ten slots.
             if lockin.state is LockInState.QUIET or not notes:
                 return "release"
             return "re_entry"
