@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { getAdapter } from "../api/adapter";
@@ -138,6 +138,21 @@ export default function DateStudio() {
   const [memory, setMemory] = useState<DateMemory[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const resultsRef = useRef<HTMLElement>(null);
+
+  // On a phone the form fills the viewport. Generated cards are inserted
+  // below its button, so leaving the scroll position unchanged makes a
+  // successful click look like it did nothing. Move focus and the viewport to
+  // the result after React has rendered it; this also announces the update to
+  // assistive technology.
+  useEffect(() => {
+    if (paths === null) return;
+    const frame = window.requestAnimationFrame(() => {
+      resultsRef.current?.scrollIntoView?.({ block: "start" });
+      resultsRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [paths]);
 
   const refreshMemory = async () => {
     setMemory(await getAdapter().getDateMemory(lockInId));
@@ -323,7 +338,23 @@ export default function DateStudio() {
         ) : null}
 
         {paths !== null ? (
-          <section className="flex flex-col gap-3">
+          <section
+            ref={resultsRef}
+            tabIndex={-1}
+            aria-label="Generated plans"
+            aria-live="polite"
+            className="flex scroll-mt-4 flex-col gap-3 outline-none"
+          >
+            <header>
+              <p className="text-[10px] font-semibold tracking-[0.18em] text-navy/60 uppercase">
+                Generated plans
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-text">
+                {paths.length > 0
+                  ? `${paths.length} ${paths.length === 1 ? "idea" : "ideas"} for tonight`
+                  : "No plans matched yet"}
+              </h2>
+            </header>
             {paths.map((path, i) => (
               <div key={path.pathId} className="flex flex-col gap-3">
                 <DatePlanCard

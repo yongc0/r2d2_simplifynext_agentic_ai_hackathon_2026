@@ -8,7 +8,7 @@ import type { ChipKind, Intent, ProfileChip } from "../api/types";
 import { SingpassVerification } from "../components/SingpassVerification";
 import { ForeignerSignup } from "../components/ForeignerSignup";
 import { intentLabel } from "../api/wire";
-import { cacheProfileChips, profilePatchFromChips } from "../api/profile";
+import { profilePatchFromChips } from "../api/profile";
 import { useSpark } from "../store/useSpark";
 
 /**
@@ -111,7 +111,6 @@ export default function Onboarding() {
   const finishOnboarding = async (profileChips: ProfileChip[]) => {
     try {
       await getAdapter().updateProfile(profilePatchFromChips(profileChips));
-      cacheProfileChips(profileChips);
       setPendingSave(null);
       setSaveError(null);
       setMessages((m) => [...m, { from: "agent", text: COMPLETE }]);

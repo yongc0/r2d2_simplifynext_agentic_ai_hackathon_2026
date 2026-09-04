@@ -185,6 +185,19 @@ describe("the planner form", () => {
       ).toBeInTheDocument();
     }
   });
+
+  it("moves to the generated plans after the phone-sized form", async () => {
+    await connect();
+    renderStudio();
+
+    await generate();
+
+    const results = screen.getByRole("region", { name: /generated plans/i });
+    expect(results).toHaveFocus();
+    expect(
+      within(results).getByRole("heading", { name: /ideas for tonight/i }),
+    ).toBeInTheDocument();
+  });
 });
 
 // ---------------------------------------------------------------------------

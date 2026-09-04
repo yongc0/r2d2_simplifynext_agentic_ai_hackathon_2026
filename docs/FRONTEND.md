@@ -183,9 +183,9 @@ Ends with a mode selection: **Potential Partner** (long-term / short-term) or **
 
 ### 5.1a `/profile` — what you told Spark
 
-Onboarding is a conversation you have once; this is the same information as a
-surface you can return to. A profile you can only set by re-running an intake
-chat is a profile nobody corrects.
+In this account-free demo, onboarding starts again on every full page load.
+During that page session, the same information remains available as an editable
+surface so a person can correct it without re-running the intake chat.
 
 The rules from §5.1 still apply: intent is chosen from three options in a fixed
 order with nothing preselected, and there is no height, appearance or photo

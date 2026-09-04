@@ -302,7 +302,7 @@ describe("profile topic choices", () => {
     expect(profile.personality).toBe("optimistic, independent");
     expect(profile.languages).toEqual(["english", "mandarin"]);
     expect((await adapter.getEncounter()).sharedInterests).toContain("coffee");
-    expect(localStorage.getItem("spark.profile-chips.v1")).toContain("Optimistic");
+    expect(localStorage.getItem("spark.profile-chips.v1")).toBeNull();
   }, 15_000);
 
   it("does not claim onboarding is complete when the profile save fails", async () => {

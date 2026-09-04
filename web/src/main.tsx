@@ -3,10 +3,16 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
 import App from "./App";
+import { beginFreshProfileSession } from "./api/profile";
 import "./index.css";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("#root is missing from index.html");
+
+// A profile is intentionally page-session state. Every full page load starts
+// at setup, even if the browser refreshed a deeper route such as `/home`.
+// Preserve the query string so the presenter's `?demo=1` switch still works.
+beginFreshProfileSession();
 
 createRoot(root).render(
   <StrictMode>

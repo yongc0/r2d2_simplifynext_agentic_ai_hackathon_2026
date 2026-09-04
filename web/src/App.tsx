@@ -2,12 +2,6 @@ import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { getAdapter } from "./api/adapter";
-import {
-  cacheProfileChips,
-  chipsFromProfile,
-  profilePatchFromChips,
-  readCachedProfileChips,
-} from "./api/profile";
 import { CloseOut } from "./components/CloseOut";
 import { DemoControls, demoModeRequested } from "./components/DemoControls";
 import { AppNav } from "./components/AppNav";
@@ -51,7 +45,6 @@ import Chat from "./screens/Chat";
 export default function App() {
   useDirectorHotkey();
   useAgentEvents();
-  useProfileHydration();
   // Read once at mount. `?demo=1` is an operator's flag, not a user setting.
   const [demo] = useState(demoModeRequested);
 
@@ -59,7 +52,7 @@ export default function App() {
     <>
     <DeviceFrame rail={<DirectorPanel />}>
       <Routes>
-        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="/" element={<Navigate to="/onboarding" replace />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/home" element={<Home />} />
         <Route path="/encounter" element={<Encounter />} />
@@ -105,44 +98,6 @@ export default function App() {
     {demo ? <DemoControls /> : null}
     </>
   );
-}
-
-/**
- * Restore a completed onboarding profile after refresh, then reconcile it with
- * the same adapter the matcher uses. HTTP mode reads the server copy; the
- * offline demo writes the cached profile into its fresh in-memory adapter.
- */
-function useProfileHydration() {
-  const setChips = useSpark((s) => s.setChips);
-  const epoch = useSpark((s) => s.traceEpoch);
-
-  useEffect(() => {
-    const cached = readCachedProfileChips();
-    if (cached.length === 0) return;
-
-    let cancelled = false;
-    setChips(cached);
-    const adapter = getAdapter();
-    const profile = import.meta.env.VITE_API === "http"
-      ? adapter.getProfile()
-      : adapter.updateProfile(profilePatchFromChips(cached));
-
-    void profile
-      .then((saved) => {
-        if (cancelled) return;
-        const hydrated = chipsFromProfile(saved);
-        setChips(hydrated);
-        cacheProfileChips(hydrated);
-      })
-      .catch(() => {
-        // The cached, successfully-saved profile remains visible. Profile edits
-        // surface write failures; hydration itself must not block the app.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [epoch, setChips]);
 }
 
 /**

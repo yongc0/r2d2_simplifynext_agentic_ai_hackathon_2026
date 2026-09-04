@@ -13,15 +13,15 @@ import {
 } from "../api/extract";
 import type { ChipKind, Intent, ProfileChip } from "../api/types";
 import { intentLabel } from "../api/wire";
-import { cacheProfileChips, profilePatchFromChips } from "../api/profile";
+import { profilePatchFromChips } from "../api/profile";
 import { useSpark } from "../store/useSpark";
 
 /**
  * `/profile` — what you told Spark, and how to change it.
  *
- * Onboarding is a conversation you have once. This is the same information as a
- * surface you can come back to, because a profile you can only set by
- * re-running an intake chat is a profile nobody corrects.
+ * Onboarding starts again on every full page load for this account-free demo.
+ * During that page session, this is the same information as an editable
+ * surface so a person can correct it without re-running the intake chat.
  *
  * THE RULES FROM ONBOARDING STILL APPLY HERE, and for the same reasons.
  *
@@ -116,7 +116,6 @@ export default function Profile() {
     void getAdapter()
       .updateProfile(profilePatchFromChips(chips))
       .then(() => {
-        cacheProfileChips(chips);
         setSaveError(null);
       })
       .catch((cause: unknown) =>
